@@ -5,6 +5,9 @@
 ![Chart.js](https://img.shields.io/badge/Chart.js-4.x-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)
 ![GitHub REST API](https://img.shields.io/badge/GitHub%20REST%20API-v3-181717?style=flat-square&logo=github&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://git-spectre.vercel.app/)
+
+> 🚀 **[https://git-spectre.vercel.app/](https://git-spectre.vercel.app/)** — live, no setup required.
 
 ---
 
