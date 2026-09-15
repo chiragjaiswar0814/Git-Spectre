@@ -28,10 +28,15 @@ The performance of Git-Spectre is entirely dependent on how aggressively it hits
 Instead, the backend uses **`asyncio.gather()`** to fire concurrent requests simultaneously from a single async context:
 
 ```python
-# Both requests are in-flight at the same time — not queued
-profile, repos = await asyncio.gather(
+# All 7 requests fire simultaneously — not queued
+profile, repos, events, orgs, gists, followers, following = await asyncio.gather(
     _fetch_profile(client, username, headers),
     _fetch_repos(client, username, headers),
+    _fetch_events(client, username, headers),
+    _fetch_orgs(client, username, headers),
+    _fetch_gists(client, username, headers),
+    _fetch_followers(client, username, headers),
+    _fetch_following(client, username, headers),
 )
 ```
 
@@ -141,7 +146,7 @@ This makes the deployed app use an authenticated token by default (5,000 req/hr)
 
 ```json
 {
-  "username": "torvalds",
+  "username": "chiragjaiswar0814",
   "github_token": "ghp_optional_token"
 }
 ```
@@ -150,11 +155,17 @@ Returns a structured dossier:
 
 ```json
 {
-  "profile":   { "login": "...", "followers": 0, "public_repos": 0, "..." },
-  "stats":     { "total_stars": 0, "own_repos": 0, "forked_repos": 0 },
-  "languages": { "C": 182400, "Python": 43200, "..." },
-  "archetype": { "label": "OPEN-SOURCE LEGEND", "glow": "#f59e0b", "description": "..." },
-  "top_repos": [ { "name": "...", "stars": 0, "language": "...", "url": "..." } ]
+  "profile":        { "login": "chiragjaiswar0814", "followers": 2, "public_repos": 81, "..." },
+  "stats":          { "total_stars": 1, "own_repos": 72, "forked_repos": 9 },
+  "languages":      { "Python": 182400, "JavaScript": 43200, "..." },
+  "archetype":      { "label": "THE POLYGLOT", "glow": "#06b6d4", "description": "..." },
+  "score":          { "total": 286, "grade": "D", "breakdown": { "stars": 0, "..." } },
+  "heatmap":        { "2026-09-14": 3, "2026-09-15": 5 },
+  "streaks":        { "current": 2, "longest": 7, "total_active_days": 45 },
+  "top_repos":      [ { "name": "Git-Spectre", "stars": 1, "language": "Python", "url": "..." } ],
+  "followers_list": [ { "login": "...", "avatar_url": "...", "url": "..." } ],
+  "following_list": [ { "login": "...", "avatar_url": "...", "url": "..." } ],
+  "gists":          { "total": 0, "top_language": null }
 }
 ```
 
