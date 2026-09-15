@@ -13,8 +13,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from pathlib import Path
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
+
+# Resolve paths relative to this file so they work in any working directory
+BASE_DIR = Path(__file__).resolve().parent
 
 logger = logging.getLogger("git-spectre")
 
@@ -225,7 +229,7 @@ def _top_repos(repos: List[Dict[str, Any]], n: int = 3) -> List[Dict[str, Any]]:
 
 @app.get("/", include_in_schema=False)
 async def serve_spa() -> FileResponse:
-    return FileResponse("index.html")
+    return FileResponse(str(BASE_DIR / "index.html"))
 
 
 @app.post("/api/analyze")
