@@ -70,16 +70,57 @@ HTML = r'''<!DOCTYPE html>
      NAV
      ========================================================= -->
 <nav class="relative z-10 flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/5 glass">
-  <div class="flex items-center gap-3">
-    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+  <div class="flex items-center gap-3.5 select-none">
+
+    <!-- ── Logo mark: glass card + precision reticle ── -->
+    <div class="relative flex-shrink-0 flex items-center justify-center"
+         style="width:42px;height:42px">
+      <!-- glass background -->
+      <div class="absolute inset-0 rounded-xl"
+           style="background:linear-gradient(145deg,rgba(34,211,238,0.10),rgba(109,40,217,0.16));
+                  border:1px solid rgba(34,211,238,0.28);
+                  box-shadow:0 0 22px rgba(34,211,238,0.13),inset 0 1px 0 rgba(255,255,255,0.08)"></div>
+      <!-- reticle icon -->
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="position:relative;z-index:1">
+        <!-- outer ring -->
+        <circle cx="12" cy="12" r="9"   stroke="rgba(34,211,238,0.22)" stroke-width="1"/>
+        <!-- mid ring -->
+        <circle cx="12" cy="12" r="5.5" stroke="rgba(34,211,238,0.55)" stroke-width="1.2"/>
+        <!-- core dot -->
+        <circle cx="12" cy="12" r="2"   fill="#22d3ee" style="filter:drop-shadow(0 0 4px #22d3ee)"/>
+        <!-- crosshairs -->
+        <line x1="12" y1="2"    x2="12" y2="5.5"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
+        <line x1="12" y1="18.5" x2="12" y2="22"   stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
+        <line x1="2"  y1="12"   x2="5.5" y2="12"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
+        <line x1="18.5" y1="12" x2="22"  y2="12"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
       </svg>
     </div>
+
+    <!-- ── Wordmark ── -->
     <div>
-      <span class="font-black text-lg tracking-tight">GIT-SPECTRE</span>
-      <span class="ml-2 font-mono text-xs text-cyan-400/80 bg-cyan-400/10 px-2 py-0.5 rounded-full">v2.0</span>
+      <!-- top row: GIT | SPECTRE -->
+      <div class="flex items-baseline gap-0">
+        <span style="font-family:Inter,sans-serif;font-weight:300;font-size:10px;
+                     letter-spacing:0.22em;color:#52525b;text-transform:uppercase;
+                     padding-right:7px">GIT</span>
+        <!-- vertical divider -->
+        <div style="width:1px;height:13px;margin-right:7px;flex-shrink:0;
+                    background:linear-gradient(180deg,transparent,rgba(34,211,238,0.55),transparent)"></div>
+        <span style="font-family:Inter,sans-serif;font-weight:900;font-size:17px;
+                     letter-spacing:-0.03em;text-transform:uppercase;
+                     background:linear-gradient(135deg,#f4f4f5 30%,#a1a1aa);
+                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                     background-clip:text">SPECTRE</span>
+      </div>
+      <!-- bottom row: gradient rule + v2.0 -->
+      <div class="flex items-center gap-1.5" style="margin-top:3px">
+        <div style="height:1px;width:44px;
+                    background:linear-gradient(90deg,rgba(34,211,238,0.7),transparent)"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;
+                     color:rgba(34,211,238,0.60);letter-spacing:0.14em">v2.0</span>
+      </div>
     </div>
+
   </div>
 
   <!-- Rate Limit Gauge -->
