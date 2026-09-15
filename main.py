@@ -221,6 +221,32 @@ async def _fetch_gists(client: httpx.AsyncClient, username: str, headers: Dict) 
     return resp.json()
 
 
+async def _fetch_followers(client: httpx.AsyncClient, username: str, headers: Dict) -> List[Dict]:
+    """Fetch first 10 followers (login + avatar)."""
+    resp = await _get_with_retry(
+        client, f"{GITHUB_API}/users/{username}/followers",
+        headers=headers,
+        params={"per_page": 10},
+    )
+    if resp.status_code in (403, 404):
+        return []
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def _fetch_following(client: httpx.AsyncClient, username: str, headers: Dict) -> List[Dict]:
+    """Fetch first 10 following (login + avatar)."""
+    resp = await _get_with_retry(
+        client, f"{GITHUB_API}/users/{username}/following",
+        headers=headers,
+        params={"per_page": 10},
+    )
+    if resp.status_code in (403, 404):
+        return []
+    resp.raise_for_status()
+    return resp.json()
+
+
 # ------------------------------------------------------------
 # Analytics — existing
 # ------------------------------------------------------------
@@ -477,12 +503,14 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         try:
-            profile, repos, events, orgs, gists = await asyncio.gather(
+            profile, repos, events, orgs, gists, followers_raw, following_raw = await asyncio.gather(
                 _fetch_profile(client, username, headers),
                 _fetch_repos(client, username, headers),
                 _fetch_events(client, username, headers),
                 _fetch_orgs(client, username, headers),
                 _fetch_gists(client, username, headers),
+                _fetch_followers(client, username, headers),
+                _fetch_following(client, username, headers),
             )
         except HTTPException:
             raise
@@ -535,6 +563,22 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
                 "url":        f"https://github.com/{o['login']}",
             }
             for o in orgs[:8]
+        ],
+        "followers_list": [
+            {
+                "login":      f["login"],
+                "avatar_url": f.get("avatar_url", ""),
+                "url":        f.get("html_url", f"https://github.com/{f['login']}"),
+            }
+            for f in followers_raw[:10]
+        ],
+        "following_list": [
+            {
+                "login":      f["login"],
+                "avatar_url": f.get("avatar_url", ""),
+                "url":        f.get("html_url", f"https://github.com/{f['login']}"),
+            }
+            for f in following_raw[:10]
         ],
     }
 

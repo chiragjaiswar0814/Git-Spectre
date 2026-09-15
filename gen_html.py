@@ -294,21 +294,33 @@ HTML = r'''<!DOCTYPE html>
       <div id="scoreRingContainer"></div>
     </div>
     <!-- Stats -->
-    <div class="glass grad-border rounded-xl p-4 text-center">
-      <p class="font-mono text-2xl font-bold text-cyan-400 neon-cyan" id="statRepos">0</p>
-      <p class="text-xs font-mono text-zinc-500 mt-1 uppercase tracking-widest">Repos</p>
+    <div class="glass grad-border rounded-xl p-4 flex flex-col">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-cyan-400 neon-cyan" id="statRepos">0</p>
+        <p class="text-xs font-mono text-zinc-500 mt-0.5 uppercase tracking-widest">Repos</p>
+      </div>
+      <div class="border-t border-white/5 mt-3 pt-2 space-y-1.5 overflow-y-auto" style="max-height:110px" id="reposMiniList"></div>
     </div>
-    <div class="glass grad-border rounded-xl p-4 text-center">
-      <p class="font-mono text-2xl font-bold text-yellow-400" id="statStars">0</p>
-      <p class="text-xs font-mono text-zinc-500 mt-1 uppercase tracking-widest">Stars</p>
+    <div class="glass grad-border rounded-xl p-4 flex flex-col">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-yellow-400" id="statStars">0</p>
+        <p class="text-xs font-mono text-zinc-500 mt-0.5 uppercase tracking-widest">Stars</p>
+      </div>
+      <div class="border-t border-white/5 mt-3 pt-2 space-y-1.5 overflow-y-auto" style="max-height:110px" id="starsMiniList"></div>
     </div>
-    <div class="glass grad-border rounded-xl p-4 text-center">
-      <p class="font-mono text-2xl font-bold text-violet-400" id="statFollowers">0</p>
-      <p class="text-xs font-mono text-zinc-500 mt-1 uppercase tracking-widest">Followers</p>
+    <div class="glass grad-border rounded-xl p-4 flex flex-col">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-violet-400" id="statFollowers">0</p>
+        <p class="text-xs font-mono text-zinc-500 mt-0.5 uppercase tracking-widest">Followers</p>
+      </div>
+      <div class="border-t border-white/5 mt-3 pt-2 space-y-1.5 overflow-y-auto" style="max-height:110px" id="followersMiniList"></div>
     </div>
-    <div class="glass grad-border rounded-xl p-4 text-center">
-      <p class="font-mono text-2xl font-bold text-green-400" id="statFollowing">0</p>
-      <p class="text-xs font-mono text-zinc-500 mt-1 uppercase tracking-widest">Following</p>
+    <div class="glass grad-border rounded-xl p-4 flex flex-col">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-green-400" id="statFollowing">0</p>
+        <p class="text-xs font-mono text-zinc-500 mt-0.5 uppercase tracking-widest">Following</p>
+      </div>
+      <div class="border-t border-white/5 mt-3 pt-2 space-y-1.5 overflow-y-auto" style="max-height:110px" id="followingMiniList"></div>
     </div>
   </div>
 
@@ -614,6 +626,59 @@ function buildHeatmap(data){
         ${cellsHtml}
       </div>
     </div>`;
+}
+
+// ============================================================
+// STAT MINI-LISTS (repos / stars / followers / following)
+// ============================================================
+const _repoSvg=`<svg class="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`;
+
+function _emptyMsg(text){
+  return `<p class="font-mono text-center" style="font-size:9px;color:#3f3f46;padding-top:4px">${text}</p>`;
+}
+
+function buildStatLists(topRepos,followers,following){
+  // --- Repos ---
+  const rl=document.getElementById('reposMiniList');
+  if(topRepos&&topRepos.length){
+    rl.innerHTML=topRepos.slice(0,7).map(r=>`
+      <a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="${r.name}">
+        <span class="text-zinc-700 group-hover:text-cyan-500 transition-colors shrink-0">${_repoSvg}</span>
+        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">${r.name}</span>
+      </a>`).join('');
+  }else{rl.innerHTML=_emptyMsg('No repos yet');}
+
+  // --- Stars (repos that have stars) ---
+  const sl=document.getElementById('starsMiniList');
+  const starredRepos=(topRepos||[]).filter(r=>r.stars>0).slice(0,7);
+  if(starredRepos.length){
+    sl.innerHTML=starredRepos.map(r=>`
+      <a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="${r.name} — ${r.stars} stars">
+        <span class="shrink-0" style="color:#ca8a04;font-size:10px">★</span>
+        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate flex-1" style="font-size:10px">${r.name}</span>
+        <span class="font-mono shrink-0" style="font-size:9px;color:#713f12">${r.stars}</span>
+      </a>`).join('');
+  }else{sl.innerHTML=_emptyMsg('No starred repos');}
+
+  // --- Followers ---
+  const fl=document.getElementById('followersMiniList');
+  if(followers&&followers.length){
+    fl.innerHTML=followers.slice(0,8).map(f=>`
+      <a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="@${f.login}">
+        <img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" alt="${f.login}" loading="lazy"/>
+        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span>
+      </a>`).join('');
+  }else{fl.innerHTML=_emptyMsg('No followers yet');}
+
+  // --- Following ---
+  const fwl=document.getElementById('followingMiniList');
+  if(following&&following.length){
+    fwl.innerHTML=following.slice(0,8).map(f=>`
+      <a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="@${f.login}">
+        <img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" alt="${f.login}" loading="lazy"/>
+        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span>
+      </a>`).join('');
+  }else{fwl.innerHTML=_emptyMsg('Not following anyone');}
 }
 
 // ============================================================
@@ -971,7 +1036,7 @@ async function runScan(){
 // RENDER DOSSIER (v2)
 // ============================================================
 function renderDossier(data){
-  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached}=data;
+  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list}=data;
 
   // Cached badge
   const cb=document.getElementById('cachedBadge');
@@ -1016,6 +1081,7 @@ function renderDossier(data){
   buildTagCloud(topics);
   buildLangEvolution(lang_evolution);
   buildGistSection(gists);
+  buildStatLists(top_repos,followers_list||[],following_list||[]);
 
   // Charts
   const entries=Object.entries(languages);
