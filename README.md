@@ -67,20 +67,21 @@ To generate a token: [GitHub → Settings → Developer Settings → Personal Ac
 | **Frontend** | Vanilla JS + TailwindCSS | No build step, no bundler, ships as a single `index.html` |
 | **Charts** | Chart.js | Radar and doughnut charts for language distribution — no heavy dependencies |
 | **GitHub Data** | GitHub REST API v3 | Public, no SDK needed, raw `httpx` calls keep the dependency count low |
+| **Hosting** | Vercel (`@vercel/python`) | Serverless FastAPI deployment — zero infrastructure to manage |
 
 ---
 
-## Quick Start
+## Quick Start (Local)
 
 **Prerequisites:** Python 3.11+
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-username/git-spectre.git
-cd git-spectre
+git clone https://github.com/chiragjaiswar0814/Git-Spectre.git
+cd Git-Spectre
 
 # 2. Install dependencies
-pip install fastapi uvicorn httpx
+pip install -r requirements.txt
 
 # 3. Run the backend
 python main.py
@@ -101,6 +102,36 @@ python main.py
 # macOS / Linux
 GITHUB_TOKEN=ghp_your_token_here python main.py
 ```
+
+---
+
+## Deploy to Vercel
+
+This repo is pre-configured for Vercel via [`vercel.json`](./vercel.json) and [`requirements.txt`](./requirements.txt).
+
+### One-click deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/chiragjaiswar0814/Git-Spectre)
+
+### Manual deploy
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy from the project root
+vercel
+```
+
+### Optional: set a default GitHub token on Vercel
+
+In the Vercel dashboard → **Project → Settings → Environment Variables**, add:
+
+```
+GITHUB_TOKEN = ghp_your_token_here
+```
+
+This makes the deployed app use an authenticated token by default (5,000 req/hr), without requiring users to enter one in the UI.
 
 ---
 
