@@ -187,6 +187,4 @@ The archetype engine scores a user across followers, total stars, language diver
 
 ---
 
-## License
 
-MIT — do whatever you want with it.
