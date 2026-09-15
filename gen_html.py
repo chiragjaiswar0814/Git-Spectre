@@ -496,32 +496,38 @@ function buildScoreRing(score){
   const offset=circ*(1-Math.min(total,1000)/1000);
   const gradeColors={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
   const col=gradeColors[grade]||'#22d3ee';
+  // Max possible points per component
   const maxScore={stars:300,followers:200,diversity:150,repos:100,age:80,activity:70};
+  // Human-readable labels (rename 'age' -> 'Tenure' to avoid confusion)
+  const labelMap={stars:'Stars',followers:'Social',diversity:'Diversity',repos:'Repos',age:'Tenure',activity:'Activity'};
   const barsHtml=Object.entries(breakdown).map(([k,v])=>`
     <div class="flex items-center gap-2">
-      <span class="font-mono text-xs text-zinc-600 w-16 shrink-0 capitalize">${k}</span>
+      <span class="font-mono text-xs text-zinc-600 w-16 shrink-0">${labelMap[k]||k}</span>
       <div class="flex-1 bg-white/5 rounded-full h-1 overflow-hidden">
         <div class="h-full rounded-full transition-all duration-700" style="width:${Math.round(v/(maxScore[k]||100)*100)}%;background:${col};opacity:0.7"></div>
       </div>
       <span class="font-mono text-xs text-zinc-600 w-6 text-right">${v}</span>
     </div>`).join('');
 
+  // Use relative wrapper + absolute SVG so the center text never overlaps or floats away
   document.getElementById('scoreRingContainer').innerHTML=`
-    <div class="flex flex-col items-center">
-      <svg width="130" height="130" class="-rotate-90" style="overflow:visible">
-        <circle cx="65" cy="65" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
-        <circle id="scoreArc" cx="65" cy="65" r="${r}" fill="none" stroke="${col}" stroke-width="10"
-          stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
-          style="transition:stroke-dashoffset 1.6s cubic-bezier(0.4,0,0.2,1);filter:drop-shadow(0 0 10px ${col}66)"/>
-      </svg>
-      <div class="absolute flex flex-col items-center" style="margin-top:-65px">
-        <span id="scoreNum" class="font-black text-3xl text-white leading-none">0</span>
-        <span class="font-mono text-xs text-zinc-600">/1000</span>
-        <span class="font-black text-base mt-0.5" style="color:${col}">${grade}</span>
+    <div class="flex flex-col items-center w-full">
+      <div class="relative flex items-center justify-center" style="width:130px;height:130px;flex-shrink:0">
+        <svg width="130" height="130" class="-rotate-90" style="position:absolute;top:0;left:0;overflow:visible">
+          <circle cx="65" cy="65" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+          <circle id="scoreArc" cx="65" cy="65" r="${r}" fill="none" stroke="${col}" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+            style="transition:stroke-dashoffset 1.6s cubic-bezier(0.4,0,0.2,1);filter:drop-shadow(0 0 10px ${col}66)"/>
+        </svg>
+        <div class="relative z-10 flex flex-col items-center leading-none gap-0.5">
+          <span id="scoreNum" class="font-black text-3xl text-white">0</span>
+          <span class="font-mono text-xs text-zinc-600">/1000</span>
+          <span class="font-black text-base" style="color:${col}">${grade}</span>
+        </div>
       </div>
-    </div>
-    <p class="font-mono text-xs text-zinc-500 uppercase tracking-widest mt-2 mb-3 text-center">Dev Score™</p>
-    <div class="space-y-1.5 w-full">${barsHtml}</div>`;
+      <p class="font-mono text-xs text-zinc-500 uppercase tracking-widest mt-2 mb-3 text-center">Dev Score™</p>
+      <div class="space-y-1.5 w-full">${barsHtml}</div>
+    </div>`;
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const arc=document.getElementById('scoreArc');
