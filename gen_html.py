@@ -239,7 +239,7 @@ HTML = r'''<!DOCTYPE html>
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
       </svg>
     </div>
-    <input id="searchInput" type="text" placeholder="Enter GitHub Target  (e.g. torvalds)"
+    <input id="searchInput" type="text" placeholder="Enter GitHub Target  (e.g. chiragjaiswar0814)"
       class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-36 py-5 text-lg font-mono text-zinc-100 placeholder-zinc-600 outline-none transition-all duration-300 focus:border-cyan-500/50"
       onkeydown="if(event.key==='Enter') runScan()" />
     <button id="scanBtn" onclick="runScan()"
