@@ -34,7 +34,7 @@ logger = logging.getLogger("git-spectre")
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 # ------------------------------------------------------------
@@ -91,6 +91,11 @@ class AnalyzeRequest(BaseModel):
 class CompareRequest(BaseModel):
     username_a: str
     username_b: str
+    github_token: Optional[str] = None
+
+
+class BatchRequest(BaseModel):
+    usernames: List[str]
     github_token: Optional[str] = None
 
 
@@ -488,6 +493,84 @@ def _gist_stats(gists: List[Dict]) -> Dict[str, Any]:
     }
 
 
+def _extract_commit_messages(events: List[Dict]) -> List[str]:
+    """First lines of commit messages from PushEvents (up to 200 total)."""
+    messages: List[str] = []
+    for e in events:
+        if e.get("type") == "PushEvent":
+            for commit in e.get("payload", {}).get("commits", []):
+                msg = commit.get("message", "").strip()
+                if msg:
+                    messages.append(msg.split("\n")[0][:200])
+    return messages[:200]
+
+
+def _compute_community(events: List[Dict], username: str) -> Dict[str, Any]:
+    """PR/issue/comment activity and external repository contributions."""
+    prs_opened    = 0
+    prs_merged    = 0
+    issues_opened = 0
+    issue_comments = 0
+    external_repos: Dict[str, str] = {}
+
+    for e in events:
+        etype    = e.get("type", "")
+        repo_name = e.get("repo", {}).get("name", "")
+        payload  = e.get("payload", {})
+
+        if etype == "PullRequestEvent":
+            action = payload.get("action", "")
+            if action == "opened":
+                prs_opened += 1
+            elif action == "closed" and payload.get("pull_request", {}).get("merged"):
+                prs_merged += 1
+        elif etype == "IssuesEvent" and payload.get("action") == "opened":
+            issues_opened += 1
+        elif etype == "IssueCommentEvent":
+            issue_comments += 1
+
+        if etype == "PushEvent" and not repo_name.lower().startswith(f"{username.lower()}/"):
+            if repo_name and repo_name not in external_repos:
+                external_repos[repo_name] = f"https://github.com/{repo_name}"
+
+    return {
+        "prs_opened":     prs_opened,
+        "prs_merged":     prs_merged,
+        "issues_opened":  issues_opened,
+        "issue_comments": issue_comments,
+        "external_repos": [
+            {"name": n, "url": u} for n, u in list(external_repos.items())[:8]
+        ],
+    }
+
+
+def _compute_fork_details(repos: List[Dict]) -> List[Dict]:
+    """Top forked repos sorted by stars."""
+    forks = [r for r in repos if r.get("fork")]
+    return [
+        {
+            "name":     r["name"],
+            "url":      r["html_url"],
+            "stars":    r.get("stargazers_count", 0),
+            "language": r.get("language") or "N/A",
+            "updated":  r.get("updated_at", "")[:10],
+        }
+        for r in sorted(forks, key=lambda r: r.get("stargazers_count", 0), reverse=True)[:8]
+    ]
+
+
+def _compute_lang_repo_counts(repos: List[Dict]) -> Dict[str, int]:
+    """Number of own (non-forked) repos per language."""
+    counts: Dict[str, int] = defaultdict(int)
+    for r in repos:
+        if r.get("fork"):
+            continue
+        lang = r.get("language")
+        if lang:
+            counts[lang] += 1
+    return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True))
+
+
 # ------------------------------------------------------------
 # Core analysis (shared by /analyze and /compare)
 # ------------------------------------------------------------
@@ -555,7 +638,11 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         "streaks":       _compute_streaks(events),
         "topics":        _aggregate_topics(repos),
         "lang_evolution": _language_evolution(repos),
-        "gists":         _gist_stats(gists),
+        "gists":          _gist_stats(gists),
+        "commit_messages": _extract_commit_messages(events),
+        "community":      _compute_community(events, username),
+        "fork_details":   _compute_fork_details(repos),
+        "lang_repo_counts": _compute_lang_repo_counts(repos),
         "orgs": [
             {
                 "login":      o["login"],
@@ -619,6 +706,100 @@ async def compare(payload: CompareRequest) -> Dict[str, Any]:
     except HTTPException:
         raise
     return {"user_a": result_a, "user_b": result_b}
+
+
+@app.post("/api/batch")
+async def batch_analyze(payload: BatchRequest) -> List[Dict[str, Any]]:
+    """Analyze up to 10 profiles concurrently and return a sorted leaderboard."""
+    usernames = [u.strip() for u in payload.usernames[:10] if u.strip()]
+    if not usernames:
+        raise HTTPException(422, "At least one username required.")
+    token = payload.github_token or os.getenv("GITHUB_TOKEN")
+    results = await asyncio.gather(
+        *[_run_analysis(u, token) for u in usernames],
+        return_exceptions=True,
+    )
+    out: List[Dict[str, Any]] = []
+    for uname, res in zip(usernames, results):
+        if isinstance(res, Exception):
+            out.append({"username": uname, "error": str(res), "score": -1})
+        else:
+            out.append({
+                "username":       uname,
+                "avatar_url":     res["profile"]["avatar_url"],
+                "name":           res["profile"]["name"],
+                "score":          res["score"]["total"],
+                "grade":          res["score"]["grade"],
+                "archetype":      res["archetype"]["label"],
+                "archetype_glow": res["archetype"]["glow"],
+                "top_language":   next(iter(res["languages"]), "N/A"),
+                "total_stars":    res["stats"]["total_stars"],
+                "followers":      res["profile"]["followers"],
+                "repos":          res["stats"]["own_repos"],
+                "streak":         res["streaks"]["current"],
+                "html_url":       res["profile"]["html_url"],
+            })
+    return sorted(out, key=lambda x: x.get("score", -1), reverse=True)
+
+
+@app.get("/embed/{username}", include_in_schema=False)
+async def embed_profile(username: str) -> HTMLResponse:
+    """Minimal embeddable profile card for portfolios and READMEs."""
+    token = os.getenv("GITHUB_TOKEN")
+    try:
+        data = await _run_analysis(username.strip(), token)
+    except HTTPException as exc:
+        return HTMLResponse(
+            f"<p style='font-family:monospace;color:#ef4444;padding:16px'>Error: {exc.detail}</p>",
+            status_code=exc.status_code,
+        )
+
+    p   = data["profile"]
+    sc  = data["score"]
+    arc = data["archetype"]
+    langs = list(data["languages"].items())[:4]
+    tot   = sum(v for _, v in langs) or 1
+    grade_colors = {
+        "S+": "#f59e0b", "S": "#10b981", "A": "#06b6d4",
+        "B":  "#8b5cf6", "C": "#f97316", "D": "#ef4444", "E": "#6b7280",
+    }
+    sc_col = grade_colors.get(sc["grade"], "#22d3ee")
+    lang_html = "".join(
+        f'<div style="margin-bottom:6px">'
+        f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;'
+        f'font-family:monospace;color:#a1a1aa"><span>{lg}</span><span>{round(v/tot*100)}%</span></div>'
+        f'<div style="background:rgba(255,255,255,0.08);border-radius:3px;height:3px">'
+        f'<div style="width:{round(v/tot*100)}%;background:#22d3ee;border-radius:3px;height:3px">'
+        f'</div></div></div>'
+        for lg, v in langs
+    )
+    html = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:'Inter',sans-serif;background:#09090b;color:#e4e4e7;padding:20px;border-radius:12px;border:1px solid rgba(34,211,238,.15)}}</style>
+</head><body>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+  <img src="{p['avatar_url']}" style="width:56px;height:56px;border-radius:12px;border:2px solid rgba(34,211,238,.3)">
+  <div style="flex:1;min-width:0">
+    <div style="font-weight:900;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{p['name']}</div>
+    <div style="color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:12px">@{p['login']}</div>
+    <span style="background:{arc['glow']}22;border:1px solid {arc['glow']}55;color:{arc['glow']};
+      font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+      padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">{arc['label']}</span>
+  </div>
+  <div style="text-align:center;flex-shrink:0">
+    <div style="font-size:26px;font-weight:900;color:{sc_col}">{sc['total']}</div>
+    <div style="font-size:9px;color:#52525b;font-family:'JetBrains Mono',monospace">/1000</div>
+    <div style="font-size:14px;font-weight:900;color:{sc_col}">{sc['grade']}</div>
+  </div>
+</div>
+{lang_html}
+<div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);
+  text-align:center;font-size:9px;color:#3f3f46;font-family:'JetBrains Mono',monospace;letter-spacing:.1em">
+  <a href="https://git-spectre.vercel.app/?u={p['login']}" target="_blank"
+     style="color:#22d3ee44;text-decoration:none">GIT-SPECTRE</a>
+</div>
+</body></html>"""
+    return HTMLResponse(html)
 
 
 @app.get("/api/rate-limit")

@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Git-Spectre | Developer Deep-Profiler</title>
-  <meta name="description" content="Ultra-premium cinematic GitHub profile analyzer. Uncover developer archetypes, language DNA, contribution heatmaps, and repository intelligence." />
-
-  <!-- OpenGraph / Twitter -->
+  <meta name="description" content="Ultra-premium cinematic GitHub profile analyzer. Uncover developer archetypes, language DNA, commit quality, PR activity, contribution heatmaps, and repository intelligence." />
   <meta property="og:type"        content="website" />
   <meta property="og:title"       content="Git-Spectre | Developer Deep-Profiler" />
   <meta property="og:description" content="Uncover developer archetypes, language DNA, and repository intelligence from any GitHub profile." />
@@ -30,7 +28,26 @@
   </script>
 
   <style>
-    body { background:#09090b; font-family:'Inter',sans-serif; }
+    /* ── Theme variables ── */
+    :root { --bg:#09090b; }
+    html.light { --bg:#f0f4f8; }
+    body { background:var(--bg); font-family:'Inter',sans-serif; }
+    html.light body { color:#0f172a; }
+    html.light .glass { background:rgba(255,255,255,.9)!important; border-color:rgba(0,0,0,.09)!important; }
+    html.light .text-zinc-100,html.light .text-zinc-200 { color:#0f172a!important; }
+    html.light .text-zinc-300 { color:#1e293b!important; }
+    html.light .text-zinc-400 { color:#334155!important; }
+    html.light .text-zinc-500 { color:#475569!important; }
+    html.light .text-zinc-600 { color:#64748b!important; }
+    html.light .bg-black\/40 { background:rgba(255,255,255,.7)!important; }
+    html.light .border-white\/10 { border-color:rgba(0,0,0,.09)!important; }
+    html.light .bg-white\/5,html.light .bg-white\/4,html.light .bg-white\/3 { background:rgba(0,0,0,.04)!important; }
+    html.light #starfield { opacity:.04!important; }
+    html.light .text-white { color:#0f172a!important; }
+    html.light nav { background:rgba(240,244,248,.9)!important; border-color:rgba(0,0,0,.07)!important; }
+    html.light .bg-zinc-950\/90 { background:rgba(240,244,248,.95)!important; }
+
+    /* ── Core ── */
     #starfield { position:fixed;inset:0;z-index:0;pointer-events:none; }
     .neon-cyan  { text-shadow:0 0 8px #22d3ee,0 0 24px #22d3ee44; }
     @keyframes scanline { 0%{transform:translateY(-100%);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(400%);opacity:0} }
@@ -57,67 +74,65 @@
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     .fade-up { animation:fadeUp .5s ease forwards; }
     #exportBtn { position:fixed;bottom:2rem;right:2rem;z-index:30; }
+
+    /* ── History dropdown ── */
+    .history-item:hover { background:rgba(34,211,238,.08); }
+    .history-item { transition:background .15s ease; }
+
+    /* ── Batch results ── */
+    .batch-row:hover { background:rgba(34,211,238,.04); }
+    .batch-row { transition:background .15s ease;border-bottom:1px solid rgba(255,255,255,.04); }
+
+    /* ── Toast ── */
+    @keyframes slideInR { from{opacity:0;transform:translateX(100%)} to{opacity:1;transform:translateX(0)} }
+    #toast { animation:slideInR .3s ease; }
+
+    /* ── Share card (off-screen for capture) ── */
+    #shareCard { position:fixed;left:-9999px;top:0;width:600px;height:315px;overflow:hidden; }
+
+    /* ── Quality dot ── */
+    .quality-dot { width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle; }
   </style>
 </head>
 
 <body class="font-sans text-zinc-100 min-h-screen overflow-x-hidden">
 <canvas id="starfield"></canvas>
 
+<!-- ── TOAST ── -->
+<div id="toast" class="fixed top-4 right-4 z-[100] hidden items-center gap-3 px-4 py-3 rounded-xl glass border border-white/10 font-mono text-sm text-zinc-200 shadow-xl">
+  <span id="toastIcon">✓</span>
+  <span id="toastMsg"></span>
+</div>
+
 <!-- =========================================================
      NAV
      ========================================================= -->
 <nav class="relative z-10 flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/5 glass">
   <div class="flex items-center gap-3.5 select-none">
-
-    <!-- ── Logo mark: glass card + precision reticle ── -->
-    <div class="relative flex-shrink-0 flex items-center justify-center"
-         style="width:42px;height:42px">
-      <!-- glass background -->
-      <div class="absolute inset-0 rounded-xl"
-           style="background:linear-gradient(145deg,rgba(34,211,238,0.10),rgba(109,40,217,0.16));
-                  border:1px solid rgba(34,211,238,0.28);
-                  box-shadow:0 0 22px rgba(34,211,238,0.13),inset 0 1px 0 rgba(255,255,255,0.08)"></div>
-      <!-- reticle icon -->
+    <!-- Logo -->
+    <div class="relative flex-shrink-0 flex items-center justify-center" style="width:42px;height:42px">
+      <div class="absolute inset-0 rounded-xl" style="background:linear-gradient(145deg,rgba(34,211,238,0.10),rgba(109,40,217,0.16));border:1px solid rgba(34,211,238,0.28);box-shadow:0 0 22px rgba(34,211,238,0.13),inset 0 1px 0 rgba(255,255,255,0.08)"></div>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="position:relative;z-index:1">
-        <!-- outer ring -->
         <circle cx="12" cy="12" r="9"   stroke="rgba(34,211,238,0.22)" stroke-width="1"/>
-        <!-- mid ring -->
         <circle cx="12" cy="12" r="5.5" stroke="rgba(34,211,238,0.55)" stroke-width="1.2"/>
-        <!-- core dot -->
         <circle cx="12" cy="12" r="2"   fill="#22d3ee" style="filter:drop-shadow(0 0 4px #22d3ee)"/>
-        <!-- crosshairs -->
         <line x1="12" y1="2"    x2="12" y2="5.5"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
         <line x1="12" y1="18.5" x2="12" y2="22"   stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
         <line x1="2"  y1="12"   x2="5.5" y2="12"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
         <line x1="18.5" y1="12" x2="22"  y2="12"  stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
       </svg>
     </div>
-
-    <!-- ── Wordmark ── -->
     <div>
-      <!-- top row: GIT | SPECTRE -->
       <div class="flex items-baseline gap-0">
-        <span style="font-family:Inter,sans-serif;font-weight:300;font-size:10px;
-                     letter-spacing:0.22em;color:#52525b;text-transform:uppercase;
-                     padding-right:7px">GIT</span>
-        <!-- vertical divider -->
-        <div style="width:1px;height:13px;margin-right:7px;flex-shrink:0;
-                    background:linear-gradient(180deg,transparent,rgba(34,211,238,0.55),transparent)"></div>
-        <span style="font-family:Inter,sans-serif;font-weight:900;font-size:17px;
-                     letter-spacing:-0.03em;text-transform:uppercase;
-                     background:linear-gradient(135deg,#f4f4f5 30%,#a1a1aa);
-                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-                     background-clip:text">SPECTRE</span>
+        <span style="font-family:Inter,sans-serif;font-weight:300;font-size:10px;letter-spacing:0.22em;color:#52525b;text-transform:uppercase;padding-right:7px">GIT</span>
+        <div style="width:1px;height:13px;margin-right:7px;flex-shrink:0;background:linear-gradient(180deg,transparent,rgba(34,211,238,0.55),transparent)"></div>
+        <span style="font-family:Inter,sans-serif;font-weight:900;font-size:17px;letter-spacing:-0.03em;text-transform:uppercase;background:linear-gradient(135deg,#f4f4f5 30%,#a1a1aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">SPECTRE</span>
       </div>
-      <!-- bottom row: gradient rule + v2.0 -->
       <div class="flex items-center gap-1.5" style="margin-top:3px">
-        <div style="height:1px;width:44px;
-                    background:linear-gradient(90deg,rgba(34,211,238,0.7),transparent)"></div>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;
-                     color:rgba(34,211,238,0.60);letter-spacing:0.14em">v2.0</span>
+        <div style="height:1px;width:44px;background:linear-gradient(90deg,rgba(34,211,238,0.7),transparent)"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:rgba(34,211,238,0.60);letter-spacing:0.14em">v2.1</span>
       </div>
     </div>
-
   </div>
 
   <!-- Rate Limit Gauge -->
@@ -129,19 +144,41 @@
       </div>
       <span id="rlText" class="font-mono text-xs text-zinc-600">—</span>
     </div>
+    <span id="rlCountdown" class="font-mono text-xs text-zinc-700"></span>
   </div>
 
-  <div class="flex items-center gap-2">
-    <button onclick="openCompareModal()"
+  <div class="flex items-center gap-1.5">
+    <!-- Theme Toggle -->
+    <button id="themeBtn" onclick="toggleTheme()" title="Toggle light/dark (Ctrl+T)"
+      class="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/10 transition-all">
+      <svg id="themeIconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="themeIconSun"  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <!-- Compare -->
+    <button onclick="openCompareModal()" title="Compare two profiles (Ctrl+D)"
       class="hidden md:flex items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 transition-all">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
       COMPARE
     </button>
-    <button id="exportBtn2" onclick="exportPDF()"
+    <!-- Batch Screener -->
+    <button onclick="openBatchModal()" title="Batch scan up to 10 profiles (Ctrl+B)"
+      class="hidden md:flex items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition-all">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      BATCH
+    </button>
+    <!-- Share Card -->
+    <button id="cardBtn" onclick="generateCard()" title="Download shareable PNG card"
+      class="hidden items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-pink-500/10 border border-pink-500/30 text-pink-300 hover:bg-pink-500/20 transition-all">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      CARD
+    </button>
+    <!-- PDF Export -->
+    <button id="exportBtn2" onclick="exportPDF()" title="Export PDF (Ctrl+E)"
       class="hidden items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-300 hover:bg-green-500/20 transition-all">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
       PDF
     </button>
+    <!-- API Vault -->
     <button id="vaultBtn" onclick="openVault()"
       class="flex items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-300 hover:bg-violet-500/20 transition-all">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -184,7 +221,7 @@
     <div class="flex items-center justify-between mb-5">
       <div>
         <h2 class="font-black text-lg">DUAL TARGET SCAN</h2>
-        <p class="text-xs text-zinc-400 mt-0.5">Compare two GitHub profiles side-by-side.</p>
+        <p class="text-xs text-zinc-400 mt-0.5">Accepts usernames or full GitHub profile URLs.</p>
       </div>
       <button onclick="closeCompareModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -193,18 +230,42 @@
     <div class="grid grid-cols-2 gap-3 mb-5">
       <div>
         <label class="block font-mono text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Target Alpha</label>
-        <input id="compareInputA" type="text" placeholder="e.g. torvalds"
+        <input id="compareInputA" type="text" placeholder="torvalds or github.com/torvalds"
           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-cyan-500/50 transition-colors" />
       </div>
       <div>
         <label class="block font-mono text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Target Beta</label>
-        <input id="compareInputB" type="text" placeholder="e.g. gvanrossum"
+        <input id="compareInputB" type="text" placeholder="gvanrossum or github.com/gvanrossum"
           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-cyan-500/50 transition-colors" />
       </div>
     </div>
     <button onclick="runCompare()" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold tracking-widest hover:opacity-90 transition-opacity">
       INITIATE DUAL SCAN
     </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     BATCH SCREENER MODAL
+     ========================================================= -->
+<div id="batchModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+  <div class="glass grad-border w-full max-w-2xl p-6 rounded-2xl" style="max-height:90vh;display:flex;flex-direction:column">
+    <div class="flex items-center justify-between mb-5 flex-shrink-0">
+      <div>
+        <h2 class="font-black text-lg">BATCH SCREENER</h2>
+        <p class="text-xs text-zinc-400 mt-0.5">Rank up to 10 profiles by Dev Score. One username or URL per line.</p>
+      </div>
+      <button onclick="closeBatchModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <textarea id="batchInput" rows="5" placeholder="torvalds&#10;gvanrossum&#10;https://github.com/antirez&#10;..."
+      class="flex-shrink-0 w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-amber-500/50 transition-colors resize-none mb-4"></textarea>
+    <button onclick="runBatch()" id="batchRunBtn"
+      class="flex-shrink-0 w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 font-bold tracking-widest hover:opacity-90 transition-opacity mb-4">
+      INITIATE BATCH SCAN
+    </button>
+    <div id="batchResults" class="overflow-y-auto min-h-0 flex-1"></div>
   </div>
 </div>
 
@@ -218,7 +279,7 @@
 
   <div class="inline-flex items-center gap-2 font-mono text-xs bg-cyan-400/10 border border-cyan-400/20 text-cyan-300 px-3 py-1.5 rounded-full mb-6">
     <div class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-    INTELLIGENCE SYSTEM v2 ONLINE
+    INTELLIGENCE SYSTEM v2.1 ONLINE
   </div>
 
   <h1 class="text-5xl md:text-7xl font-black tracking-tighter mb-4 leading-none">
@@ -227,22 +288,34 @@
   </h1>
   <p class="text-zinc-400 max-w-lg mb-10 text-base leading-relaxed">
     Uncover developer archetypes. Map language DNA. Extract repository intelligence.<br/>
-    <span class="text-zinc-500 text-sm font-mono">Heatmaps · Streaks · Scores · Compare · Export</span>
+    <span class="text-zinc-500 text-sm font-mono">Heatmaps · Commit Quality · PR Activity · Compare · Export</span>
   </p>
 
-  <div class="w-full max-w-2xl relative">
+  <!-- Search + history -->
+  <div class="w-full max-w-2xl relative" id="searchWrapper">
     <div class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
       </svg>
     </div>
-    <input id="searchInput" type="text" placeholder="Enter GitHub Target  (e.g. chiragjaiswar0814)"
+    <input id="searchInput" type="text"
+      placeholder="Username or https://github.com/username"
       class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-36 py-5 text-lg font-mono text-zinc-100 placeholder-zinc-600 outline-none transition-all duration-300 focus:border-cyan-500/50"
-      onkeydown="if(event.key==='Enter') runScan()" />
+      onkeydown="if(event.key==='Enter') runScan()"
+      onfocus="showHistory()"
+      onblur="setTimeout(hideHistory,200)" />
     <button id="scanBtn" onclick="runScan()"
       class="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-sm tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
       SCAN
     </button>
+    <!-- History dropdown -->
+    <div id="historyDropdown" class="absolute top-full mt-2 left-0 right-0 glass grad-border rounded-xl overflow-hidden z-50 hidden">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-white/5">
+        <p class="font-mono text-xs text-zinc-600 uppercase tracking-widest">Recent Scans</p>
+        <button onclick="clearHistory();hideHistory()" class="font-mono text-xs text-zinc-700 hover:text-red-400 transition-colors">Clear</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
   </div>
 
   <div id="errorBox" class="hidden mt-4 max-w-2xl w-full px-5 py-3 rounded-xl bg-red-500/10 border border-red-500/30 font-mono text-sm text-red-400"></div>
@@ -307,15 +380,12 @@
           <span id="metaJoined"   class="flex items-center gap-1.5"></span>
           <span id="metaBlog"     class="flex items-center gap-1.5"></span>
         </div>
-        <!-- Org Chips -->
         <div id="orgChips"></div>
-        <!-- Streak Badges -->
         <div id="streakBadges"></div>
       </div>
       <div class="shrink-0 glass rounded-xl p-4 max-w-xs text-center md:text-left">
         <p class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">ARCHETYPE ANALYSIS</p>
         <p id="archetypeDesc" class="text-sm text-zinc-300 leading-relaxed"></p>
-        <!-- Share Button -->
         <button id="shareBtn" onclick="copyShareLink()"
           class="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-white/10 font-mono text-xs text-zinc-400 hover:text-zinc-200 hover:border-white/20 transition-all">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
@@ -327,11 +397,9 @@
 
   <!-- 2. SCORE + STATS ROW -->
   <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-    <!-- Score Ring -->
     <div class="col-span-2 glass grad-border rounded-2xl p-5 flex flex-col items-center justify-center">
       <div id="scoreRingContainer"></div>
     </div>
-    <!-- Stats -->
     <div class="glass grad-border rounded-xl p-4 flex flex-col">
       <div class="text-center">
         <p class="font-mono text-2xl font-bold text-cyan-400 neon-cyan" id="statRepos">0</p>
@@ -384,11 +452,43 @@
     <div id="heatmapGrid" class="overflow-x-auto"></div>
   </div>
 
+  <!-- 3.5 COMMUNITY ACTIVITY -->
+  <div id="communityCard" class="hidden glass grad-border rounded-2xl p-6 mb-6">
+    <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-4">Community Activity</h2>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-cyan-400" id="comPrsOpened">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">PRs Opened</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-green-400" id="comPrsMerged">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">PRs Merged</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-yellow-400" id="comIssues">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Issues Opened</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-violet-400" id="comComments">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Comments</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-pink-400" id="comExternal">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Ext. Repos</p>
+      </div>
+    </div>
+    <div id="externalRepos"></div>
+  </div>
+
   <!-- 4. LANGUAGE INTELLIGENCE + TAG CLOUD -->
   <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
     <div class="lg:col-span-2 glass grad-border rounded-2xl p-6">
-      <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-1">Language DNA</h2>
-      <p class="text-xs font-mono text-zinc-600 mb-4">KB of code per language</p>
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300">Language DNA</h2>
+        <button id="radarToggleBtn" onclick="toggleRadarMode()"
+          class="font-mono text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-zinc-400 hover:text-cyan-300 hover:border-cyan-500/30 transition-all">KB</button>
+      </div>
+      <p class="text-xs font-mono text-zinc-600 mb-4" id="radarSubtitle">KB of code per language</p>
       <div class="relative h-64"><canvas id="radarChart"></canvas></div>
     </div>
     <div class="lg:col-span-2 glass grad-border rounded-2xl p-6">
@@ -406,7 +506,10 @@
   <!-- 5. DEEP ANALYTICS: Activity Hours + Language Evolution -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <div class="glass grad-border rounded-2xl p-6">
-      <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-1">Activity Hours</h2>
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300">Activity Hours</h2>
+        <span id="chronotypeBadge" class="font-mono text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-zinc-400"></span>
+      </div>
       <p class="text-xs font-mono text-zinc-600 mb-4">Events by day × hour (UTC)</p>
       <div id="activityHoursGrid"></div>
     </div>
@@ -440,7 +543,63 @@
     </div>
   </div>
 
-  <!-- 7. TOP REPOSITORIES (6 repos) -->
+  <!-- 7. COMMIT MESSAGE QUALITY -->
+  <div id="commitCard" class="hidden glass grad-border rounded-2xl p-6 mb-6">
+    <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-4">Commit Message Quality</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <div class="text-center">
+        <div class="flex items-center justify-center gap-2 mb-1">
+          <p class="font-mono text-2xl font-bold" id="commitQualityScore">—</p>
+          <span id="commitQualityDot" class="quality-dot"></span>
+        </div>
+        <p class="font-mono text-xs text-zinc-500">Quality Score</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-red-400" id="commitVaguePct">—</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Vague %</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-cyan-400" id="commitAvgLen">—</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Avg. Length</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-zinc-400" id="commitTotal">—</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Analyzed</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white/3 border border-white/5 rounded-xl p-4">
+        <p class="font-mono text-xs text-green-400 uppercase tracking-widest mb-2">🏆 Best Commit</p>
+        <p class="font-mono text-xs text-zinc-400 italic leading-relaxed line-clamp-3" id="commitBest">—</p>
+      </div>
+      <div class="bg-white/3 border border-white/5 rounded-xl p-4">
+        <p class="font-mono text-xs text-red-400 uppercase tracking-widest mb-2">💀 Worst Commit</p>
+        <p class="font-mono text-xs text-zinc-400 italic leading-relaxed line-clamp-3" id="commitWorst">—</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. FORK ANALYSIS -->
+  <div id="forkCard" class="hidden glass grad-border rounded-2xl p-6 mb-6">
+    <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-4">Fork Analysis</h2>
+    <div class="grid grid-cols-3 gap-4 mb-5">
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-orange-400" id="forkOwnCount">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Original Repos</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-zinc-500" id="forkForkCount">0</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Forks</p>
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold text-cyan-400" id="forkRatio">0%</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Original Ratio</p>
+      </div>
+    </div>
+    <div id="forkList" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+  </div>
+
+  <!-- 9. TOP REPOSITORIES -->
   <div class="glass grad-border rounded-2xl p-6">
     <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-5">
       Top Repositories &nbsp;<span class="text-cyan-400/60 font-mono normal-case text-xs">(by stars)</span>
@@ -471,6 +630,31 @@
 
 </main>
 
+<!-- =========================================================
+     SHARE CARD (off-screen, captured by html2canvas)
+     ========================================================= -->
+<div id="shareCard" style="background:#09090b;padding:28px;border-radius:16px;border:1px solid rgba(34,211,238,0.2);font-family:'Inter',sans-serif;color:#f4f4f5">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+    <img id="scAvatar" src="" alt="" style="width:60px;height:60px;border-radius:12px;border:2px solid rgba(34,211,238,0.4)">
+    <div style="flex:1;min-width:0">
+      <div id="scName" style="font-weight:900;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="scLogin" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#22d3ee"></div>
+      <span id="scArchetype" style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 10px;border-radius:20px;margin-top:4px;display:inline-block"></span>
+    </div>
+    <div style="text-align:center;flex-shrink:0">
+      <div id="scScore" style="font-size:32px;font-weight:900"></div>
+      <div id="scGrade" style="font-size:16px;font-weight:900"></div>
+      <div style="font-size:10px;color:#52525b;font-family:'JetBrains Mono',monospace">/1000</div>
+    </div>
+  </div>
+  <div id="scLangs" style="margin-bottom:16px"></div>
+  <div id="scStats" style="display:flex;gap:12px;margin-bottom:16px"></div>
+  <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#3f3f46;letter-spacing:0.12em">GIT-SPECTRE.VERCEL.APP</span>
+    <span id="scStreaks" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f97316"></span>
+  </div>
+</div>
+
 <!-- Floating Export Button -->
 <button id="exportBtn" onclick="exportPDF()"
   class="hidden items-center gap-2 font-mono text-xs font-bold px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-violet-600/20 border border-cyan-500/30 text-cyan-300 hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-cyan-500/10 backdrop-blur">
@@ -492,74 +676,202 @@
 })();
 
 // ============================================================
+// THEME
+// ============================================================
+function initTheme(){
+  const t=localStorage.getItem('gs_theme')||'dark';
+  applyTheme(t);
+}
+function applyTheme(t){
+  const html=document.documentElement;
+  if(t==='light'){html.classList.remove('dark');html.classList.add('light');}
+  else{html.classList.remove('light');html.classList.add('dark');}
+  document.getElementById('themeIconMoon').classList.toggle('hidden',t==='light');
+  document.getElementById('themeIconSun').classList.toggle('hidden',t!=='light');
+}
+function toggleTheme(){
+  const isLight=document.documentElement.classList.contains('light');
+  const next=isLight?'dark':'light';
+  localStorage.setItem('gs_theme',next);
+  applyTheme(next);
+  showToast(next==='light'?'☀️ Light mode on':'🌑 Dark mode on');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let _toastTimer=null;
+function showToast(msg,icon='✓'){
+  const el=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastIcon').textContent=icon;
+  el.classList.remove('hidden');el.classList.add('flex');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{el.classList.add('hidden');el.classList.remove('flex');},2800);
+}
+
+// ============================================================
 // TOKEN VAULT
 // ============================================================
 function openVault(){const m=document.getElementById('vaultModal');m.classList.remove('hidden');m.classList.add('flex');const s=localStorage.getItem('gs_token');if(s)document.getElementById('tokenInput').value=s;}
 function closeVault(){const m=document.getElementById('vaultModal');m.classList.add('hidden');m.classList.remove('flex');}
-function saveToken(){const t=document.getElementById('tokenInput').value.trim();if(t){localStorage.setItem('gs_token',t);document.getElementById('tokenStatus').className='w-2 h-2 rounded-full bg-green-400';}closeVault();refreshRateLimit();}
-function clearToken(){localStorage.removeItem('gs_token');document.getElementById('tokenInput').value='';document.getElementById('tokenStatus').className='w-2 h-2 rounded-full bg-zinc-600';closeVault();}
+function saveToken(){const t=document.getElementById('tokenInput').value.trim();if(t){localStorage.setItem('gs_token',t);document.getElementById('tokenStatus').className='w-2 h-2 rounded-full bg-green-400';showToast('Token saved','🔑');}closeVault();refreshRateLimit();}
+function clearToken(){localStorage.removeItem('gs_token');document.getElementById('tokenInput').value='';document.getElementById('tokenStatus').className='w-2 h-2 rounded-full bg-zinc-600';closeVault();showToast('Token cleared','🗑️');}
 if(localStorage.getItem('gs_token'))document.getElementById('tokenStatus').className='w-2 h-2 rounded-full bg-green-400';
-document.getElementById('vaultModal').addEventListener('click',function(e){if(e.target===this)closeVault();});
-document.getElementById('compareModal').addEventListener('click',function(e){if(e.target===this)closeCompareModal();});
+document.getElementById('vaultModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeVault();});
+document.getElementById('compareModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCompareModal();});
+document.getElementById('batchModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeBatchModal();});
 
 // ============================================================
-// RATE LIMIT GAUGE
+// BATCH MODAL
 // ============================================================
+function openBatchModal(){const m=document.getElementById('batchModal');m.classList.remove('hidden');m.classList.add('flex');document.getElementById('batchInput').focus();}
+function closeBatchModal(){const m=document.getElementById('batchModal');m.classList.add('hidden');m.classList.remove('flex');}
+
+async function runBatch(){
+  const raw=document.getElementById('batchInput').value;
+  const lines=raw.split('\n').map(l=>extractUsername(l.trim())).filter(Boolean);
+  const usernames=[...new Set(lines)].slice(0,10);
+  if(!usernames.length)return;
+  const btn=document.getElementById('batchRunBtn');
+  btn.textContent='SCANNING…';btn.disabled=true;
+  document.getElementById('batchResults').innerHTML=`<div class="text-center py-8 font-mono text-amber-400 animate-pulse text-sm tracking-widest">SCANNING ${usernames.length} TARGET${usernames.length>1?'S':''}…</div>`;
+  try{
+    const token=localStorage.getItem('gs_token')||'';
+    const resp=await fetch('/api/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usernames,github_token:token||null})});
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.detail||`HTTP ${resp.status}`);
+    renderBatchResults(data);
+  }catch(err){
+    document.getElementById('batchResults').innerHTML=`<p class="text-red-400 font-mono text-center py-4 text-sm">ERROR: ${err.message}</p>`;
+  }finally{btn.textContent='INITIATE BATCH SCAN';btn.disabled=false;}
+}
+
+function renderBatchResults(results){
+  const gc={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
+  let html=`<div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-left font-mono text-xs text-zinc-600 uppercase tracking-widest border-b border-white/5">
+    <th class="pb-2 pr-3">#</th><th class="pb-2 pr-3">Developer</th><th class="pb-2 pr-3">Score</th>
+    <th class="pb-2 pr-3 hidden md:table-cell">Archetype</th><th class="pb-2 pr-3 hidden md:table-cell">Lang</th>
+    <th class="pb-2 pr-3">Stars</th><th class="pb-2">Followers</th>
+  </tr></thead><tbody>`;
+  results.forEach((r,i)=>{
+    if(r.error){html+=`<tr><td colspan="7" class="py-3 font-mono text-xs text-red-400 px-1">@${r.username}: ${r.error}</td></tr>`;return;}
+    const col=gc[r.grade]||'#22d3ee';
+    html+=`<tr class="batch-row cursor-pointer" onclick="closeBatchModal();document.getElementById('searchInput').value='${r.username}';runScan()">
+      <td class="py-3 pr-3 font-mono text-xs text-zinc-600">${i+1}</td>
+      <td class="py-3 pr-3"><div class="flex items-center gap-2 min-w-0">
+        <img src="${r.avatar_url}" class="w-7 h-7 rounded-lg flex-shrink-0" alt="">
+        <div class="min-w-0"><div class="font-bold text-sm truncate">${r.name}</div><div class="font-mono text-xs text-zinc-500">@${r.username}</div></div>
+      </div></td>
+      <td class="py-3 pr-3 font-mono"><span class="font-black text-sm" style="color:${col}">${r.score}</span> <span class="text-xs" style="color:${col}">${r.grade}</span></td>
+      <td class="py-3 pr-3 hidden md:table-cell font-mono text-xs text-zinc-400">${r.archetype}</td>
+      <td class="py-3 pr-3 hidden md:table-cell font-mono text-xs" style="color:${getLC(r.top_language)}">${r.top_language}</td>
+      <td class="py-3 pr-3 font-mono text-xs text-yellow-400">★ ${r.total_stars}</td>
+      <td class="py-3 font-mono text-xs text-violet-400">${r.followers}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('batchResults').innerHTML=html;
+}
+
+// ============================================================
+// RATE LIMIT GAUGE + COUNTDOWN
+// ============================================================
+let _rlResetEpoch=0;
+let _rlInterval=null;
+
 async function refreshRateLimit(){
   try{
     const r=await fetch('/api/rate-limit');
     if(!r.ok)return;
     const d=await r.json();
     const pct=d.remaining/d.limit*100;
-    const bar=document.getElementById('rlBar');
-    const txt=document.getElementById('rlText');
-    const gauge=document.getElementById('rlGauge');
-    gauge.classList.remove('hidden');
-    gauge.classList.add('flex');
-    bar.style.width=pct+'%';
-    bar.style.background=pct>50?'#22d3ee':pct>20?'#f59e0b':'#ef4444';
-    const reset=new Date(d.reset*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    txt.textContent=`${d.remaining}/${d.limit}`;
-    bar.title=`${d.remaining} remaining. Resets at ${reset}`;
+    document.getElementById('rlGauge').classList.remove('hidden');
+    document.getElementById('rlGauge').classList.add('flex');
+    document.getElementById('rlBar').style.width=pct+'%';
+    document.getElementById('rlBar').style.background=pct>50?'#22d3ee':pct>20?'#f59e0b':'#ef4444';
+    document.getElementById('rlText').textContent=`${d.remaining}/${d.limit}`;
+    document.getElementById('rlBar').title=`${d.remaining} left. Resets ${new Date(d.reset*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+    _rlResetEpoch=d.reset;
+    if(pct<25){startRlCountdown();}else{clearInterval(_rlInterval);document.getElementById('rlCountdown').textContent='';}
   }catch(e){}
 }
-// Auto-refresh every 60 seconds
+function startRlCountdown(){
+  clearInterval(_rlInterval);
+  const el=document.getElementById('rlCountdown');
+  const tick=()=>{
+    const s=Math.max(0,_rlResetEpoch-Math.floor(Date.now()/1000));
+    if(!s){el.textContent='';clearInterval(_rlInterval);refreshRateLimit();return;}
+    el.textContent=`Resets in ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  };
+  tick();_rlInterval=setInterval(tick,1000);
+}
 setInterval(refreshRateLimit,60000);
 
 // ============================================================
 // LANG COLORS
 // ============================================================
 const LC={Python:'#3b82f6',JavaScript:'#f59e0b',TypeScript:'#2563eb',Rust:'#f97316',Go:'#22d3ee',Java:'#ef4444','C':'#8b5cf6','C++':'#a855f7',Ruby:'#e11d48',Kotlin:'#10b981',Swift:'#f43f5e',PHP:'#6366f1','C#':'#06b6d4',Dart:'#14b8a6',Scala:'#dc2626',HTML:'#fb923c',CSS:'#60a5fa',Shell:'#4ade80',Vue:'#34d399',R:'#e879f9',Haskell:'#a78bfa',Elixir:'#8b5cf6',Lua:'#818cf8','Jupyter Notebook':'#f59e0b'};
-function getLC(n){if(LC[n])return LC[n];var h=(n.split('').reduce(function(a,c){return a+c.charCodeAt(0);},0)*37)%360;return'hsl('+h+',65%,60%)';}
+function getLC(n){if(!n||n==='N/A')return'#71717a';if(LC[n])return LC[n];const h=(n.split('').reduce((a,c)=>a+c.charCodeAt(0),0)*37)%360;return`hsl(${h},65%,60%)`;}
 
 // ============================================================
 // ANIMATED COUNTER
 // ============================================================
-function animCount(el,target,dur=1200){if(!el)return;const s=performance.now();function u(n){const p=Math.min((n-s)/dur,1);const e=1-Math.pow(1-p,4);el.textContent=Math.floor(e*target).toLocaleString();if(p<1)requestAnimationFrame(u);else el.textContent=target.toLocaleString();}requestAnimationFrame(u);}
+function animCount(el,target,dur=1200){if(!el)return;const s=performance.now();const u=n=>{const p=Math.min((n-s)/dur,1);el.textContent=Math.floor((1-Math.pow(1-p,4))*target).toLocaleString();if(p<1)requestAnimationFrame(u);else el.textContent=target.toLocaleString();};requestAnimationFrame(u);}
+
+// ============================================================
+// EXTRACT USERNAME FROM URL OR PLAIN INPUT
+// ============================================================
+function extractUsername(raw){
+  if(!raw)return'';
+  const m=raw.match(/github\.com\/([a-zA-Z0-9_-]+)/i);
+  if(m)return m[1];
+  return raw.replace(/^@/,'').trim();
+}
+
+// ============================================================
+// SEARCH HISTORY
+// ============================================================
+function getHistory(){try{return JSON.parse(localStorage.getItem('gs_history')||'[]');}catch{return[];}}
+function saveToHistory(login,avatarUrl){
+  let h=getHistory().filter(x=>x.login.toLowerCase()!==login.toLowerCase());
+  h.unshift({login,avatar_url:avatarUrl});
+  localStorage.setItem('gs_history',JSON.stringify(h.slice(0,10)));
+}
+function showHistory(){
+  const h=getHistory();
+  const dd=document.getElementById('historyDropdown');
+  const list=document.getElementById('historyList');
+  if(!h.length){dd.classList.add('hidden');return;}
+  list.innerHTML=h.map(item=>`
+    <div class="history-item flex items-center gap-3 px-4 py-2.5 cursor-pointer" onmousedown="selectHistory('${item.login}')">
+      <img src="${item.avatar_url}" class="w-6 h-6 rounded-full" alt="">
+      <span class="font-mono text-sm text-zinc-300">@${item.login}</span>
+    </div>`).join('');
+  dd.classList.remove('hidden');
+}
+function hideHistory(){document.getElementById('historyDropdown').classList.add('hidden');}
+function selectHistory(login){document.getElementById('searchInput').value=login;hideHistory();runScan();}
+function clearHistory(){localStorage.removeItem('gs_history');}
 
 // ============================================================
 // SCORE RING
 // ============================================================
 function buildScoreRing(score){
   const{total,grade,breakdown}=score;
-  const r=54,circ=2*Math.PI*r;
-  const offset=circ*(1-Math.min(total,1000)/1000);
-  const gradeColors={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
-  const col=gradeColors[grade]||'#22d3ee';
-  // Max possible points per component
-  const maxScore={stars:300,followers:200,diversity:150,repos:100,age:80,activity:70};
-  // Human-readable labels (rename 'age' -> 'Tenure' to avoid confusion)
-  const labelMap={stars:'Stars',followers:'Social',diversity:'Diversity',repos:'Repos',age:'Tenure',activity:'Activity'};
+  const r=54,circ=2*Math.PI*r,offset=circ*(1-Math.min(total,1000)/1000);
+  const gc={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
+  const col=gc[grade]||'#22d3ee';
+  const maxS={stars:300,followers:200,diversity:150,repos:100,age:80,activity:70};
+  const lm={stars:'Stars',followers:'Social',diversity:'Diversity',repos:'Repos',age:'Tenure',activity:'Activity'};
   const barsHtml=Object.entries(breakdown).map(([k,v])=>`
     <div class="flex items-center gap-2">
-      <span class="font-mono text-xs text-zinc-600 w-16 shrink-0">${labelMap[k]||k}</span>
+      <span class="font-mono text-xs text-zinc-600 w-16 shrink-0">${lm[k]||k}</span>
       <div class="flex-1 bg-white/5 rounded-full h-1 overflow-hidden">
-        <div class="h-full rounded-full transition-all duration-700" style="width:${Math.round(v/(maxScore[k]||100)*100)}%;background:${col};opacity:0.7"></div>
+        <div class="h-full rounded-full" style="width:${Math.round(v/(maxS[k]||100)*100)}%;background:${col};opacity:0.7;transition:width .7s"></div>
       </div>
       <span class="font-mono text-xs text-zinc-600 w-6 text-right">${v}</span>
     </div>`).join('');
-
-  // Use relative wrapper + absolute SVG so the center text never overlaps or floats away
   document.getElementById('scoreRingContainer').innerHTML=`
     <div class="flex flex-col items-center w-full">
       <div class="relative flex items-center justify-center" style="width:130px;height:130px;flex-shrink:0">
@@ -578,10 +890,8 @@ function buildScoreRing(score){
       <p class="font-mono text-xs text-zinc-500 uppercase tracking-widest mt-2 mb-3 text-center">Dev Score™</p>
       <div class="space-y-1.5 w-full">${barsHtml}</div>
     </div>`;
-
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const arc=document.getElementById('scoreArc');
-    if(arc)arc.style.strokeDashoffset=offset;
+    const arc=document.getElementById('scoreArc');if(arc)arc.style.strokeDashoffset=offset;
     animCount(document.getElementById('scoreNum'),total,1500);
   }));
 }
@@ -592,34 +902,19 @@ function buildScoreRing(score){
 function buildOrgs(orgs){
   const el=document.getElementById('orgChips');
   if(!orgs||!orgs.length){el.innerHTML='';return;}
-  el.innerHTML=`<div class="flex flex-wrap gap-2 mt-3">
-    ${orgs.map(o=>`<a href="${o.url}" target="_blank" rel="noopener" title="@${o.login}"
-      class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 hover:text-zinc-200 transition-all text-xs font-mono text-zinc-400">
-      <img src="${o.avatar_url}" class="w-4 h-4 rounded-sm" alt="${o.login}" loading="lazy"/>
-      ${o.login}
-    </a>`).join('')}
-  </div>`;
+  el.innerHTML=`<div class="flex flex-wrap gap-2 mt-3">${orgs.map(o=>`<a href="${o.url}" target="_blank" rel="noopener" title="@${o.login}" class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 hover:text-zinc-200 transition-all text-xs font-mono text-zinc-400"><img src="${o.avatar_url}" class="w-4 h-4 rounded-sm" loading="lazy"/>${o.login}</a>`).join('')}</div>`;
 }
 
 // ============================================================
 // STREAKS
 // ============================================================
-function buildStreaks(streaks){
+function buildStreaks(s){
   const el=document.getElementById('streakBadges');
-  if(!streaks||streaks.total_active_days===0){el.innerHTML='';return;}
+  if(!s||s.total_active_days===0){el.innerHTML='';return;}
   el.innerHTML=`<div class="flex flex-wrap gap-2 mt-3">
-    ${streaks.current>0?`<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
-      <span class="text-base">🔥</span>
-      <div><p class="font-black text-sm text-orange-400 leading-none">${streaks.current}d</p><p class="font-mono text-xs text-zinc-600">Current</p></div>
-    </div>`:''}
-    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-      <span class="text-base">⚡</span>
-      <div><p class="font-black text-sm text-yellow-400 leading-none">${streaks.longest}d</p><p class="font-mono text-xs text-zinc-600">Best</p></div>
-    </div>
-    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-      <span class="text-base">📅</span>
-      <div><p class="font-black text-sm text-cyan-400 leading-none">${streaks.total_active_days}</p><p class="font-mono text-xs text-zinc-600">Active Days</p></div>
-    </div>
+    ${s.current>0?`<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20"><span>🔥</span><div><p class="font-black text-sm text-orange-400 leading-none">${s.current}d</p><p class="font-mono text-xs text-zinc-600">Current</p></div></div>`:''}
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20"><span>⚡</span><div><p class="font-black text-sm text-yellow-400 leading-none">${s.longest}d</p><p class="font-mono text-xs text-zinc-600">Best</p></div></div>
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20"><span>📅</span><div><p class="font-black text-sm text-cyan-400 leading-none">${s.total_active_days}</p><p class="font-mono text-xs text-zinc-600">Active Days</p></div></div>
   </div>`;
 }
 
@@ -627,122 +922,56 @@ function buildStreaks(streaks){
 // CONTRIBUTION HEATMAP
 // ============================================================
 function buildHeatmap(data){
-  const today=new Date();
-  const cells=[];
-  for(let i=90;i>=0;i--){
-    const d=new Date(today);d.setDate(d.getDate()-i);
-    const ds=d.toISOString().split('T')[0];
-    cells.push({date:ds,count:data[ds]||0,dow:d.getDay()});
-  }
-  // Pad so grid starts on Monday
+  const today=new Date();const cells=[];
+  for(let i=90;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];cells.push({date:ds,count:data[ds]||0,dow:d.getDay()});}
   const firstMon=(cells[0].dow===0?6:cells[0].dow-1);
   const padded=[...Array(firstMon).fill(null),...cells];
   const maxC=Math.max(...cells.map(c=>c.count),1);
-
-  function cellColor(n){
-    if(!n)return'rgba(255,255,255,0.04)';
-    const p=n/maxC;
-    if(p>.75)return'rgba(34,211,238,0.95)';
-    if(p>.5)return'rgba(34,211,238,0.65)';
-    if(p>.25)return'rgba(34,211,238,0.4)';
-    return'rgba(34,211,238,0.2)';
-  }
-
+  const cc=n=>{if(!n)return'rgba(255,255,255,0.04)';const p=n/maxC;return p>.75?'rgba(34,211,238,0.95)':p>.5?'rgba(34,211,238,0.65)':p>.25?'rgba(34,211,238,0.4)':'rgba(34,211,238,0.2)';};
   const dayLabels=['Mon','','Wed','','Fri','','Sun'];
-  const cellsHtml=padded.map(cell=>{
-    if(!cell)return`<div style="width:10px;height:10px;background:transparent"></div>`;
-    const shadow=cell.count?`box-shadow:0 0 4px rgba(34,211,238,0.4)`:'';
-    return`<div class="heatmap-cell" style="width:10px;height:10px;background:${cellColor(cell.count)};${shadow}" title="${cell.date}: ${cell.count} commit${cell.count!==1?'s':''}"></div>`;
-  }).join('');
-
-  document.getElementById('heatmapGrid').innerHTML=`
-    <div class="flex gap-1.5 items-start">
-      <div class="flex flex-col gap-0.5 mt-0.5 shrink-0">
-        ${dayLabels.map(l=>`<div class="font-mono text-zinc-700 text-right" style="font-size:9px;line-height:10px;height:10px;margin-bottom:2px">${l}</div>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;gap:2px;overflow-x:auto;padding-bottom:4px">
-        ${cellsHtml}
-      </div>
-    </div>`;
+  const cellsHtml=padded.map(c=>c?`<div class="heatmap-cell" style="width:10px;height:10px;background:${cc(c.count)};${c.count?'box-shadow:0 0 4px rgba(34,211,238,0.4)':''}" title="${c.date}: ${c.count} commit${c.count!==1?'s':''}"></div>`:`<div style="width:10px;height:10px;background:transparent"></div>`).join('');
+  document.getElementById('heatmapGrid').innerHTML=`<div class="flex gap-1.5 items-start"><div class="flex flex-col gap-0.5 mt-0.5 shrink-0">${dayLabels.map(l=>`<div class="font-mono text-zinc-700 text-right" style="font-size:9px;line-height:10px;height:10px;margin-bottom:2px">${l}</div>`).join('')}</div><div style="display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;gap:2px;overflow-x:auto;padding-bottom:4px">${cellsHtml}</div></div>`;
 }
 
 // ============================================================
-// STAT MINI-LISTS (repos / stars / followers / following)
+// STAT MINI-LISTS
 // ============================================================
-const _repoSvg=`<svg class="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`;
+const _rSvg=`<svg class="shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`;
+const _em=t=>`<p class="font-mono text-center" style="font-size:9px;color:#3f3f46;padding-top:4px">${t}</p>`;
 
-function _emptyMsg(text){
-  return `<p class="font-mono text-center" style="font-size:9px;color:#3f3f46;padding-top:4px">${text}</p>`;
-}
-
-function buildStatLists(topRepos,followers,following){
-  // --- Repos ---
+function buildStatLists(tr,fl,fw){
   const rl=document.getElementById('reposMiniList');
-  if(topRepos&&topRepos.length){
-    rl.innerHTML=topRepos.slice(0,7).map(r=>`
-      <a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="${r.name}">
-        <span class="text-zinc-700 group-hover:text-cyan-500 transition-colors shrink-0">${_repoSvg}</span>
-        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">${r.name}</span>
-      </a>`).join('');
-  }else{rl.innerHTML=_emptyMsg('No repos yet');}
-
-  // --- Stars (repos that have stars) ---
+  rl.innerHTML=tr&&tr.length?tr.slice(0,7).map(r=>`<a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0"><span class="text-zinc-700 group-hover:text-cyan-500 transition-colors shrink-0">${_rSvg}</span><span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">${r.name}</span></a>`).join(''):_em('No repos yet');
   const sl=document.getElementById('starsMiniList');
-  const starredRepos=(topRepos||[]).filter(r=>r.stars>0).slice(0,7);
-  if(starredRepos.length){
-    sl.innerHTML=starredRepos.map(r=>`
-      <a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="${r.name} — ${r.stars} stars">
-        <span class="shrink-0" style="color:#ca8a04;font-size:10px">★</span>
-        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate flex-1" style="font-size:10px">${r.name}</span>
-        <span class="font-mono shrink-0" style="font-size:9px;color:#713f12">${r.stars}</span>
-      </a>`).join('');
-  }else{sl.innerHTML=_emptyMsg('No starred repos');}
-
-  // --- Followers ---
-  const fl=document.getElementById('followersMiniList');
-  if(followers&&followers.length){
-    fl.innerHTML=followers.slice(0,8).map(f=>`
-      <a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="@${f.login}">
-        <img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" alt="${f.login}" loading="lazy"/>
-        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span>
-      </a>`).join('');
-  }else{fl.innerHTML=_emptyMsg('No followers yet');}
-
-  // --- Following ---
+  const sr=(tr||[]).filter(r=>r.stars>0).slice(0,7);
+  sl.innerHTML=sr.length?sr.map(r=>`<a href="${r.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0"><span class="shrink-0" style="color:#ca8a04;font-size:10px">★</span><span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate flex-1" style="font-size:10px">${r.name}</span><span class="font-mono shrink-0" style="font-size:9px;color:#713f12">${r.stars}</span></a>`).join(''):_em('No starred repos');
+  const fll=document.getElementById('followersMiniList');
+  fll.innerHTML=fl&&fl.length?fl.slice(0,8).map(f=>`<a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0"><img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" loading="lazy"/><span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span></a>`).join(''):_em('No followers yet');
   const fwl=document.getElementById('followingMiniList');
-  if(following&&following.length){
-    fwl.innerHTML=following.slice(0,8).map(f=>`
-      <a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0" title="@${f.login}">
-        <img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" alt="${f.login}" loading="lazy"/>
-        <span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span>
-      </a>`).join('');
-  }else{fwl.innerHTML=_emptyMsg('Not following anyone');}
+  fwl.innerHTML=fw&&fw.length?fw.slice(0,8).map(f=>`<a href="${f.url}" target="_blank" rel="noopener" class="flex items-center gap-1.5 group min-w-0"><img src="${f.avatar_url}" class="shrink-0 rounded-full" style="width:14px;height:14px" loading="lazy"/><span class="font-mono text-zinc-500 group-hover:text-zinc-200 transition-colors truncate" style="font-size:10px">@${f.login}</span></a>`).join(''):_em('Not following anyone');
 }
 
 // ============================================================
-// ACTIVITY HOURS (7x24)
+// ACTIVITY HOURS (7x24) + NIGHT OWL BADGE
 // ============================================================
+function computeChronotype(grid){
+  const ht=Array(24).fill(0);grid.forEach(row=>row.forEach((v,h)=>ht[h]+=v));
+  const slots={night:0,morning:0,afternoon:0,evening:0};
+  ht.forEach((v,h)=>{if(h<6)slots.night+=v;else if(h<12)slots.morning+=v;else if(h<18)slots.afternoon+=v;else slots.evening+=v;});
+  const dom=Object.entries(slots).sort((a,b)=>b[1]-a[1])[0][0];
+  return{night:'🦉 Night Owl',morning:'🐦 Early Bird',afternoon:'⚡ Midday Coder',evening:'🌆 Evening Dev'}[dom]||'';
+}
 function buildActivityHours(grid){
+  document.getElementById('chronotypeBadge').textContent=computeChronotype(grid);
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const maxVal=Math.max(...grid.flat(),1);
-  function cellBg(v){
-    const p=v/maxVal;
-    if(p>.75)return'rgba(139,92,246,0.9)';
-    if(p>.5)return'rgba(139,92,246,0.6)';
-    if(p>.2)return'rgba(139,92,246,0.3)';
-    if(p>0)return'rgba(139,92,246,0.12)';
-    return'rgba(255,255,255,0.03)';
-  }
-  let html='<div class="overflow-x-auto">';
-  html+='<div class="flex mb-1 ml-8">';
-  for(let h=0;h<24;h+=6)html+=`<div style="flex:6 0 0;text-align:center;font-size:9px;font-family:\'JetBrains Mono\',monospace;color:#52525b">${h}h</div>`;
+  const maxV=Math.max(...grid.flat(),1);
+  const cb=v=>{const p=v/maxV;return p>.75?'rgba(139,92,246,0.9)':p>.5?'rgba(139,92,246,0.6)':p>.2?'rgba(139,92,246,0.3)':p>0?'rgba(139,92,246,0.12)':'rgba(255,255,255,0.03)';};
+  let html='<div class="overflow-x-auto"><div class="flex mb-1 ml-8">';
+  for(let h=0;h<24;h+=6)html+=`<div style="flex:6 0 0;text-align:center;font-size:9px;font-family:'JetBrains Mono',monospace;color:#52525b">${h}h</div>`;
   html+='</div>';
   grid.forEach((row,di)=>{
-    html+=`<div class="flex items-center gap-0.5 mb-0.5">`;
-    html+=`<span style="font-size:9px;font-family:\'JetBrains Mono\',monospace;color:#52525b;width:2rem;text-align:right;padding-right:4px;flex-shrink:0">${days[di]}</span>`;
-    row.forEach(v=>{
-      html+=`<div style="flex:1;height:14px;border-radius:2px;background:${cellBg(v)}" title="${v} events"></div>`;
-    });
+    html+=`<div class="flex items-center gap-0.5 mb-0.5"><span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:#52525b;width:2rem;text-align:right;padding-right:4px;flex-shrink:0">${days[di]}</span>`;
+    row.forEach(v=>{html+=`<div style="flex:1;height:14px;border-radius:2px;background:${cb(v)}" title="${v} events"></div>`;});
     html+='</div>';
   });
   html+='</div>';
@@ -753,19 +982,11 @@ function buildActivityHours(grid){
 // TECH TAG CLOUD
 // ============================================================
 function buildTagCloud(topics){
-  const el=document.getElementById('tagCloud');
-  const sec=document.getElementById('tagCloudSection');
+  const el=document.getElementById('tagCloud');const sec=document.getElementById('tagCloudSection');
   const entries=Object.entries(topics);
   if(!entries.length){sec.classList.add('hidden');return;}
-  sec.classList.remove('hidden');
-  const maxC=entries[0][1];
-  el.innerHTML=entries.map(([tag,count])=>{
-    const size=0.6+(count/maxC)*0.55;
-    const op=0.45+(count/maxC)*0.55;
-    return`<span class="tag-chip px-1.5 py-0.5 rounded border border-white/10 cursor-default"
-      style="font-size:${size}rem;opacity:${op};font-family:'JetBrains Mono',monospace;color:#a1a1aa"
-      title="${count} repo${count!==1?'s':''}">#${tag}</span>`;
-  }).join('');
+  sec.classList.remove('hidden');const maxC=entries[0][1];
+  el.innerHTML=entries.map(([tag,c])=>{const size=0.6+(c/maxC)*0.55;const op=0.45+(c/maxC)*0.55;return`<span class="tag-chip px-1.5 py-0.5 rounded border border-white/10 cursor-default" style="font-size:${size}rem;opacity:${op};font-family:'JetBrains Mono',monospace;color:#a1a1aa" title="${c} repo${c!==1?'s':''}">#${tag}</span>`;}).join('');
 }
 
 // ============================================================
@@ -773,32 +994,13 @@ function buildTagCloud(topics){
 // ============================================================
 let langEvoInst=null;
 function buildLangEvolution(data){
-  const years=Object.keys(data);
-  const sec=document.getElementById('langEvoSection');
-  if(!years.length){sec.classList.add('hidden');return;}
-  sec.classList.remove('hidden');
+  const years=Object.keys(data);const sec=document.getElementById('langEvoSection');
+  if(!years.length){sec.classList.add('hidden');return;}sec.classList.remove('hidden');
   const allLangs=[...new Set(years.flatMap(y=>Object.keys(data[y])))];
-  const datasets=allLangs.map(lang=>({
-    label:lang,
-    data:years.map(y=>data[y][lang]||0),
-    backgroundColor:getLC(lang)+'99',
-    borderColor:getLC(lang),
-    borderWidth:1,
-  }));
+  const datasets=allLangs.map(lang=>({label:lang,data:years.map(y=>data[y][lang]||0),backgroundColor:getLC(lang)+'99',borderColor:getLC(lang),borderWidth:1}));
   const canvas=document.getElementById('langEvoChart');
   if(langEvoInst){langEvoInst.destroy();langEvoInst=null;}
-  langEvoInst=new Chart(canvas.getContext('2d'),{
-    type:'bar',
-    data:{labels:years,datasets},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'rgba(255,255,255,0.5)',font:{family:'JetBrains Mono',size:9},boxWidth:8,padding:8}},
-        tooltip:{backgroundColor:'rgba(9,9,11,0.92)',borderColor:'rgba(34,211,238,0.3)',borderWidth:1,
-          titleFont:{family:'JetBrains Mono',size:11},bodyFont:{family:'JetBrains Mono',size:11}}},
-      scales:{
-        x:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.45)',font:{family:'JetBrains Mono',size:10}}},
-        y:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.45)',font:{family:'JetBrains Mono',size:10}}}
-      }}
-  });
+  langEvoInst=new Chart(canvas.getContext('2d'),{type:'bar',data:{labels:years,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'rgba(255,255,255,0.5)',font:{family:'JetBrains Mono',size:9},boxWidth:8,padding:8}},tooltip:{backgroundColor:'rgba(9,9,11,0.92)',borderColor:'rgba(34,211,238,0.3)',borderWidth:1,titleFont:{family:'JetBrains Mono',size:11},bodyFont:{family:'JetBrains Mono',size:11}}},scales:{x:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.45)',font:{family:'JetBrains Mono',size:10}}},y:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.45)',font:{family:'JetBrains Mono',size:10}}}}}});
 }
 
 // ============================================================
@@ -811,27 +1013,82 @@ function buildGistSection(gists){
   animCount(document.getElementById('gistTotal'),gists.total);
   animCount(document.getElementById('gistComments'),gists.total_comments);
   document.getElementById('gistLang').textContent=gists.top_language||'—';
-  if(gists.most_forked){
-    document.getElementById('gistMostForked').innerHTML=
-      `<a href="${gists.most_forked.url}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline">${gists.most_forked.description}</a>
-       <span class="text-zinc-600 ml-1">(${gists.most_forked.forks} forks)</span>`;
-  }
+  if(gists.most_forked)document.getElementById('gistMostForked').innerHTML=`<a href="${gists.most_forked.url}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline">${gists.most_forked.description}</a> <span class="text-zinc-600 ml-1">(${gists.most_forked.forks} forks)</span>`;
 }
 
 // ============================================================
-// RADAR CHART
+// COMMUNITY PANEL
 // ============================================================
-let chartInst=null;
+function buildCommunity(community){
+  const el=document.getElementById('communityCard');
+  const total=community.prs_opened+community.prs_merged+community.issues_opened+community.issue_comments+(community.external_repos||[]).length;
+  if(!total){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  animCount(document.getElementById('comPrsOpened'),community.prs_opened);
+  animCount(document.getElementById('comPrsMerged'),community.prs_merged);
+  animCount(document.getElementById('comIssues'),community.issues_opened);
+  animCount(document.getElementById('comComments'),community.issue_comments);
+  animCount(document.getElementById('comExternal'),(community.external_repos||[]).length);
+  const extEl=document.getElementById('externalRepos');
+  if((community.external_repos||[]).length){
+    extEl.innerHTML=`<p class="font-mono text-xs text-zinc-600 uppercase tracking-widest mb-2 mt-4 pt-4 border-t border-white/5">External Contributions</p><div class="flex flex-wrap gap-2">${community.external_repos.map(r=>`<a href="${r.url}" target="_blank" rel="noopener" class="font-mono text-xs text-zinc-400 hover:text-cyan-400 transition-colors px-2 py-1 rounded bg-white/5 border border-white/10 hover:border-cyan-500/30">${r.name}</a>`).join('')}</div>`;
+  }else{extEl.innerHTML='';}
+}
+
+// ============================================================
+// COMMIT QUALITY
+// ============================================================
+const VAGUE=['fix','update','wip','test','misc','temp','changes','stuff','commit','work','edits','edit','change','minor','tweak','cleanup','revert','patch','hotfix','todo','bump','merge'];
+function buildCommitQuality(messages){
+  const el=document.getElementById('commitCard');
+  if(!messages||!messages.length){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  const total=messages.length;
+  const vague=messages.filter(m=>{const l=m.toLowerCase().trim();return VAGUE.some(w=>l===w||l.startsWith(w+' ')||l.startsWith(w+':'));}).length;
+  const avgLen=Math.round(messages.reduce((s,m)=>s+m.length,0)/total);
+  const vagPct=Math.round(vague/total*100);
+  const qs=Math.max(0,Math.min(100,100-vagPct-Math.max(0,12-avgLen)*2));
+  const col=qs>=70?'#10b981':qs>=40?'#f59e0b':'#ef4444';
+  const scoreEl=document.getElementById('commitQualityScore');
+  scoreEl.textContent=qs;scoreEl.style.color=col;
+  document.getElementById('commitQualityDot').style.background=col;
+  document.getElementById('commitVaguePct').textContent=vagPct+'%';
+  document.getElementById('commitAvgLen').textContent=avgLen+' ch';
+  document.getElementById('commitTotal').textContent=total;
+  const sorted=[...messages].sort((a,b)=>b.length-a.length);
+  document.getElementById('commitBest').textContent=`"${sorted[0]||'—'}"`;
+  document.getElementById('commitWorst').textContent=`"${sorted[sorted.length-1]||'—'}"`;
+}
+
+// ============================================================
+// FORK PANEL
+// ============================================================
+function buildForkPanel(stats,forkDetails){
+  const el=document.getElementById('forkCard');
+  if(!forkDetails||!forkDetails.length){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  const own=stats.own_repos||0;const forked=stats.forked_repos||0;const tot=own+forked||1;
+  document.getElementById('forkOwnCount').textContent=own;
+  document.getElementById('forkForkCount').textContent=forked;
+  document.getElementById('forkRatio').textContent=Math.round(own/tot*100)+'%';
+  document.getElementById('forkList').innerHTML=forkDetails.map(r=>`<a href="${r.url}" target="_blank" rel="noopener" class="flex flex-col gap-1 p-3 rounded-xl bg-white/3 border border-white/5 hover:border-cyan-500/20 hover:bg-white/5 transition-all group"><span class="font-mono text-xs text-zinc-300 group-hover:text-cyan-400 transition-colors truncate">${r.name}</span><div class="flex items-center justify-between"><span class="font-mono text-xs" style="color:${getLC(r.language)}">${r.language}</span>${r.stars?`<span class="font-mono text-xs text-yellow-500">★ ${r.stars}</span>`:''}</div></a>`).join('');
+}
+
+// ============================================================
+// RADAR CHART (KB / Repo-Count toggle)
+// ============================================================
+let chartInst=null,_rLangs={},_rCounts={},_rMode='kb';
+function toggleRadarMode(){
+  _rMode=_rMode==='kb'?'count':'kb';
+  document.getElementById('radarToggleBtn').textContent=_rMode==='kb'?'KB':'#';
+  document.getElementById('radarSubtitle').textContent=_rMode==='kb'?'KB of code per language':'Repo count per language';
+  const entries=_rMode==='kb'?Object.entries(_rLangs):Object.entries(_rCounts);
+  if(entries.length)buildRadar(entries.map(([k])=>k),entries.map(([,v])=>Math.round(v)));
+}
 function buildRadar(labels,vals){
   const canvas=document.getElementById('radarChart');
   if(chartInst){chartInst.destroy();chartInst=null;}
-  chartInst=new Chart(canvas.getContext('2d'),{
-    type:'radar',
-    data:{labels,datasets:[{label:'KB',data:vals,fill:true,backgroundColor:'rgba(34,211,238,.12)',borderColor:'rgba(34,211,238,.8)',pointBackgroundColor:labels.map(getLC),pointBorderColor:'rgba(0,0,0,.5)',pointBorderWidth:1.5,pointRadius:5,pointHoverRadius:7}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(9,9,11,.9)',borderColor:'rgba(34,211,238,.3)',borderWidth:1,titleFont:{family:'JetBrains Mono',size:11},bodyFont:{family:'JetBrains Mono',size:11},callbacks:{label:(c)=>`${c.label} : ${c.raw} KB`}}},
-      scales:{r:{grid:{color:'rgba(255,255,255,.06)'},angleLines:{color:'rgba(255,255,255,.06)'},ticks:{display:false,backdropColor:'transparent'},pointLabels:{color:'rgba(255,255,255,.7)',font:{family:'JetBrains Mono',size:11,weight:'600'}}}}}
-  });
+  chartInst=new Chart(canvas.getContext('2d'),{type:'radar',data:{labels,datasets:[{label:_rMode==='kb'?'KB':'Repos',data:vals,fill:true,backgroundColor:'rgba(34,211,238,.12)',borderColor:'rgba(34,211,238,.8)',pointBackgroundColor:labels.map(getLC),pointBorderColor:'rgba(0,0,0,.5)',pointBorderWidth:1.5,pointRadius:5,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(9,9,11,.9)',borderColor:'rgba(34,211,238,.3)',borderWidth:1,titleFont:{family:'JetBrains Mono',size:11},bodyFont:{family:'JetBrains Mono',size:11},callbacks:{label:c=>`${c.label}: ${c.raw} ${_rMode==='kb'?'KB':'repos'}`}}},scales:{r:{grid:{color:'rgba(255,255,255,.06)'},angleLines:{color:'rgba(255,255,255,.06)'},ticks:{display:false,backdropColor:'transparent'},pointLabels:{color:'rgba(255,255,255,.7)',font:{family:'JetBrains Mono',size:11,weight:'600'}}}}}});
 }
 
 // ============================================================
@@ -843,14 +1100,21 @@ function buildBars(langs){
   e.forEach(([lang,bytes])=>{
     const pct=Math.round(bytes/tot*100);const bp=Math.round(bytes/max*100);const col=getLC(lang);const kb=(bytes/1024).toFixed(0);
     const row=document.createElement('div');row.className='group';
-    row.innerHTML=`<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${col};box-shadow:0 0 6px ${col}66;"></span><span class="font-mono text-sm text-zinc-300 font-semibold">${lang}</span></div><div class="flex items-center gap-3"><span class="font-mono text-xs text-zinc-500">${kb} KB</span><span class="font-mono text-xs font-bold" style="color:${col};">${pct}%</span></div></div><div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden"><div class="lang-bar h-full rounded-full" style="width:${bp}%;background:linear-gradient(90deg,${col}cc,${col});box-shadow:0 0 8px ${col}66;"></div></div>`;
+    row.innerHTML=`<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${col};box-shadow:0 0 6px ${col}66"></span><span class="font-mono text-sm text-zinc-300 font-semibold">${lang}</span></div><div class="flex items-center gap-3"><span class="font-mono text-xs text-zinc-500">${kb} KB</span><span class="font-mono text-xs font-bold" style="color:${col}">${pct}%</span></div></div><div class="w-full bg-white/5 rounded-full h-1.5 overflow-hidden"><div class="lang-bar h-full rounded-full" style="width:${bp}%;background:linear-gradient(90deg,${col}cc,${col});box-shadow:0 0 8px ${col}66"></div></div>`;
     c.appendChild(row);
   });
 }
 
 // ============================================================
-// REPO CARDS (v2 — richer info)
+// REPO CARDS + HEALTH BADGES
 // ============================================================
+function getRepoHealth(upd){
+  if(!upd)return{emoji:'',label:''};
+  const days=Math.floor((Date.now()-new Date(upd).getTime())/(864e5));
+  if(days<30)return{emoji:'🟢',label:'Active'};
+  if(days<180)return{emoji:'🟡',label:'Stale'};
+  return{emoji:'🔴',label:'Archived'};
+}
 function buildRepos(repos){
   const c=document.getElementById('repoList');c.innerHTML='';
   if(!repos.length){c.innerHTML='<p class="col-span-3 text-center text-zinc-600 font-mono text-sm py-8">No public repositories found.</p>';return;}
@@ -859,13 +1123,17 @@ function buildRepos(repos){
     const topics=r.topics.map(t=>`<span class="px-1.5 py-0.5 rounded-full bg-white/5 text-zinc-500 font-mono text-xs">${t}</span>`).join('');
     const sizeStr=r.size>1024?`${(r.size/1024).toFixed(1)}MB`:`${r.size}KB`;
     const updated=r.updated_at?r.updated_at.slice(0,7):'';
+    const health=getRepoHealth(r.updated_at);
     const card=document.createElement('a');
     card.href=r.url;card.target='_blank';card.rel='noopener noreferrer';
     card.className='repo-card block glass border border-white/5 rounded-xl p-4 cursor-pointer no-underline';
     card.innerHTML=`
       <div class="flex items-start justify-between gap-2 mb-2">
         <h3 class="font-mono text-sm font-bold text-cyan-300 truncate">${r.name}</h3>
-        <svg class="shrink-0 mt-0.5 opacity-40" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        <div class="flex items-center gap-1.5 shrink-0 mt-0.5">
+          ${health.emoji?`<span title="${health.label}" style="font-size:11px">${health.emoji}</span>`:''}
+          <svg class="opacity-40" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        </div>
       </div>
       <p class="text-xs text-zinc-500 leading-relaxed mb-3 line-clamp-2">${r.description}</p>
       <div class="flex flex-wrap gap-1 mb-3">${topics}</div>
@@ -883,27 +1151,52 @@ function buildRepos(repos){
 }
 
 // ============================================================
-// COMPARE MODE
+// SHAREABLE CARD (PNG via html2canvas)
 // ============================================================
-function openCompareModal(){
-  document.getElementById('compareModal').classList.remove('hidden');
-  document.getElementById('compareModal').classList.add('flex');
-  document.getElementById('compareInputA').value='';
-  document.getElementById('compareInputB').value='';
+function populateShareCard(data){
+  const{profile,score,archetype,languages,streaks,stats}=data;
+  const gc={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
+  const col=gc[score.grade]||'#22d3ee';
+  document.getElementById('scAvatar').src=profile.avatar_url;
+  document.getElementById('scName').textContent=profile.name;
+  document.getElementById('scLogin').textContent='@'+profile.login;
+  const arch=document.getElementById('scArchetype');
+  arch.textContent=archetype.label;arch.style.cssText=`background:${archetype.glow}22;border:1px solid ${archetype.glow}55;color:${archetype.glow}`;
+  const scoreEl=document.getElementById('scScore');scoreEl.textContent=score.total;scoreEl.style.color=col;
+  const gradeEl=document.getElementById('scGrade');gradeEl.textContent=score.grade;gradeEl.style.color=col;
+  const langs=Object.entries(languages).slice(0,4);const tot=langs.reduce((s,[,v])=>s+v,0)||1;
+  document.getElementById('scLangs').innerHTML=langs.map(([l,v])=>{const p=Math.round(v/tot*100);const c=getLC(l);return`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;font-family:'JetBrains Mono',monospace;color:#a1a1aa"><span>${l}</span><span>${p}%</span></div><div style="background:rgba(255,255,255,0.08);border-radius:3px;height:3px"><div style="width:${p}%;background:${c};border-radius:3px;height:3px"></div></div></div>`;}).join('');
+  document.getElementById('scStats').innerHTML=`<div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:900;color:#f59e0b">${stats.total_stars}</div><div style="font-size:9px;color:#52525b;font-family:monospace">STARS</div></div><div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:900;color:#8b5cf6">${profile.followers}</div><div style="font-size:9px;color:#52525b;font-family:monospace">FOLLOWERS</div></div><div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:900;color:#22d3ee">${stats.own_repos}</div><div style="font-size:9px;color:#52525b;font-family:monospace">REPOS</div></div>`;
+  document.getElementById('scStreaks').textContent=streaks.current>0?`🔥 ${streaks.current}d streak`:'';
 }
-function closeCompareModal(){
-  document.getElementById('compareModal').classList.add('hidden');
-  document.getElementById('compareModal').classList.remove('flex');
+async function generateCard(){
+  const btn=document.getElementById('cardBtn');
+  btn.textContent='GENERATING…';btn.disabled=true;
+  try{
+    const card=document.getElementById('shareCard');
+    card.style.left='0px';card.style.zIndex='9999';
+    await new Promise(r=>setTimeout(r,100));
+    const canvas=await html2canvas(card,{backgroundColor:'#09090b',scale:2,useCORS:true,allowTaint:true,logging:false});
+    card.style.left='-9999px';card.style.zIndex='-1';
+    const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`git-spectre-${currentUsername||'card'}.png`;a.click();
+    showToast('Card downloaded!','🖼️');
+  }catch(e){console.error(e);showToast('Card export failed','❌');}
+  finally{btn.textContent='CARD';btn.disabled=false;}
 }
 
+// ============================================================
+// COMPARE MODE
+// ============================================================
+function openCompareModal(){document.getElementById('compareModal').classList.remove('hidden');document.getElementById('compareModal').classList.add('flex');document.getElementById('compareInputA').value='';document.getElementById('compareInputB').value='';}
+function closeCompareModal(){document.getElementById('compareModal').classList.add('hidden');document.getElementById('compareModal').classList.remove('flex');}
+
 async function runCompare(){
-  const ua=document.getElementById('compareInputA').value.trim();
-  const ub=document.getElementById('compareInputB').value.trim();
+  const ua=extractUsername(document.getElementById('compareInputA').value.trim());
+  const ub=extractUsername(document.getElementById('compareInputB').value.trim());
   if(!ua||!ub)return;
   closeCompareModal();
   const token=localStorage.getItem('gs_token')||'';
-  const cSec=document.getElementById('compareSection');
-  const cContent=document.getElementById('compareSectionContent');
+  const cSec=document.getElementById('compareSection');const cContent=document.getElementById('compareSectionContent');
   cSec.classList.remove('hidden');
   cContent.innerHTML='<div class="text-center py-20 font-mono text-cyan-400 animate-pulse text-lg tracking-widest">DUAL SCAN IN PROGRESS...</div>';
   cSec.scrollIntoView({behavior:'smooth',block:'start'});
@@ -912,88 +1205,25 @@ async function runCompare(){
     const data=await resp.json();
     if(!resp.ok)throw new Error(data.detail||`HTTP ${resp.status}`);
     renderCompare(data);
-  }catch(err){
-    cContent.innerHTML=`<p class="text-red-400 font-mono text-center py-10 text-sm">ERROR: ${err.message}</p>`;
-  }
+  }catch(err){cContent.innerHTML=`<p class="text-red-400 font-mono text-center py-10 text-sm">ERROR: ${err.message}</p>`;}
 }
 
 function renderCompare(data){
   const{user_a,user_b}=data;
-  const cContent=document.getElementById('compareSectionContent');
-
   function miniCard(u){
     const{profile,stats,score,archetype,languages,streaks}=u;
-    const langE=Object.entries(languages).slice(0,5);
-    const tot=langE.reduce((s,[,v])=>s+v,0)||1;
-    const gradeColors={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
-    const scoreCol=gradeColors[score.grade]||'#22d3ee';
-    const r=36,circ=2*Math.PI*r;
+    const lE=Object.entries(languages).slice(0,5);const tot=lE.reduce((s,[,v])=>s+v,0)||1;
+    const gc={'S+':'#f59e0b','S':'#10b981','A':'#06b6d4','B':'#8b5cf6','C':'#f97316','D':'#ef4444','E':'#6b7280'};
+    const sc=gc[score.grade]||'#22d3ee';const r=36,circ=2*Math.PI*r;
     return`<div class="glass grad-border rounded-2xl p-6">
-      <div class="flex items-center gap-4 mb-5">
-        <img src="${profile.avatar_url}" class="w-16 h-16 rounded-xl border-2 border-cyan-500/30 object-cover" alt="${profile.login}"/>
-        <div class="min-w-0">
-          <h3 class="font-black text-lg truncate">${profile.name}</h3>
-          <p class="font-mono text-cyan-400 text-sm">@${profile.login}</p>
-          <span class="inline-flex mt-1 font-mono text-xs font-bold px-2 py-0.5 rounded-full border"
-            style="background:${archetype.glow}22;border-color:${archetype.glow}55;color:${archetype.glow}">${archetype.label}</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-4 mb-5">
-        <div class="relative shrink-0" style="width:80px;height:80px">
-          <svg width="80" height="80" class="-rotate-90">
-            <circle cx="40" cy="40" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
-            <circle cx="40" cy="40" r="${r}" fill="none" stroke="${scoreCol}" stroke-width="8"
-              stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-score.total/1000)}"
-              stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${scoreCol}66)"/>
-          </svg>
-          <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="font-black text-sm leading-none">${score.total}</span>
-            <span class="font-black text-xs" style="color:${scoreCol}">${score.grade}</span>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2 flex-1">
-          <div class="text-center"><p class="font-black text-base text-cyan-400">${stats.own_repos}</p><p class="font-mono text-xs text-zinc-600">Repos</p></div>
-          <div class="text-center"><p class="font-black text-base text-yellow-400">${stats.total_stars}</p><p class="font-mono text-xs text-zinc-600">Stars</p></div>
-          <div class="text-center"><p class="font-black text-base text-violet-400">${profile.followers}</p><p class="font-mono text-xs text-zinc-600">Followers</p></div>
-          <div class="text-center"><p class="font-black text-base text-orange-400">${streaks.current||0}d</p><p class="font-mono text-xs text-zinc-600">Streak</p></div>
-        </div>
-      </div>
-      <div class="space-y-2">
-        ${langE.map(([l,b])=>{const p=Math.round(b/tot*100);const col=getLC(l);return`<div><div class="flex justify-between mb-0.5"><span class="font-mono text-xs text-zinc-400">${l}</span><span class="font-mono text-xs text-zinc-600">${p}%</span></div><div class="bg-white/5 rounded-full h-1 overflow-hidden"><div class="h-full rounded-full" style="width:${p}%;background:${col}"></div></div></div>`;}).join('')}
-      </div>
+      <div class="flex items-center gap-4 mb-5"><img src="${profile.avatar_url}" class="w-16 h-16 rounded-xl border-2 border-cyan-500/30 object-cover"/><div class="min-w-0"><h3 class="font-black text-lg truncate">${profile.name}</h3><p class="font-mono text-cyan-400 text-sm">@${profile.login}</p><span class="inline-flex mt-1 font-mono text-xs font-bold px-2 py-0.5 rounded-full border" style="background:${archetype.glow}22;border-color:${archetype.glow}55;color:${archetype.glow}">${archetype.label}</span></div></div>
+      <div class="flex items-center gap-4 mb-5"><div class="relative shrink-0" style="width:80px;height:80px"><svg width="80" height="80" class="-rotate-90"><circle cx="40" cy="40" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/><circle cx="40" cy="40" r="${r}" fill="none" stroke="${sc}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-score.total/1000)}" stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${sc}66)"/></svg><div class="absolute inset-0 flex flex-col items-center justify-center"><span class="font-black text-sm leading-none">${score.total}</span><span class="font-black text-xs" style="color:${sc}">${score.grade}</span></div></div>
+      <div class="grid grid-cols-2 gap-2 flex-1"><div class="text-center"><p class="font-black text-base text-cyan-400">${stats.own_repos}</p><p class="font-mono text-xs text-zinc-600">Repos</p></div><div class="text-center"><p class="font-black text-base text-yellow-400">${stats.total_stars}</p><p class="font-mono text-xs text-zinc-600">Stars</p></div><div class="text-center"><p class="font-black text-base text-violet-400">${profile.followers}</p><p class="font-mono text-xs text-zinc-600">Followers</p></div><div class="text-center"><p class="font-black text-base text-orange-400">${streaks.current||0}d</p><p class="font-mono text-xs text-zinc-600">Streak</p></div></div></div>
+      <div class="space-y-2">${lE.map(([l,b])=>{const p=Math.round(b/tot*100);const c=getLC(l);return`<div><div class="flex justify-between mb-0.5"><span class="font-mono text-xs text-zinc-400">${l}</span><span class="font-mono text-xs text-zinc-600">${p}%</span></div><div class="bg-white/5 rounded-full h-1 overflow-hidden"><div class="h-full rounded-full" style="width:${p}%;background:${c}"></div></div></div>`;}).join('')}</div>
     </div>`;
   }
-
-  const metrics=[
-    {label:'Dev Score',a:user_a.score.total,b:user_b.score.total},
-    {label:'Stars',a:user_a.stats.total_stars,b:user_b.stats.total_stars},
-    {label:'Followers',a:user_a.profile.followers,b:user_b.profile.followers},
-    {label:'Repos',a:user_a.stats.own_repos,b:user_b.stats.own_repos},
-    {label:'Languages',a:Object.keys(user_a.languages).length,b:Object.keys(user_b.languages).length},
-    {label:'Streak',a:user_a.streaks.current||0,b:user_b.streaks.current||0},
-  ];
-
-  cContent.innerHTML=`
-    <div class="grid grid-cols-1 lg:grid-cols-[1fr_180px_1fr] gap-6 items-start">
-      <div class="fade-up" style="animation-delay:0s">${miniCard(user_a)}</div>
-      <div class="flex flex-col items-center py-4 lg:py-8">
-        <div class="font-black text-4xl text-zinc-700 mb-6">VS</div>
-        <div class="space-y-2 w-full">
-          ${metrics.map(m=>{
-            const aW=m.a>m.b,bW=m.b>m.a;
-            return`<div class="glass rounded-lg py-2 px-3 text-center">
-              <p class="font-mono text-xs text-zinc-600 mb-1">${m.label}</p>
-              <div class="flex items-center justify-between">
-                <span class="font-black text-sm ${aW?'text-cyan-400':'text-zinc-600'}">${m.a.toLocaleString()}</span>
-                <span class="font-mono text-xs text-zinc-700">${aW?'←':bW?'→':'='}</span>
-                <span class="font-black text-sm ${bW?'text-cyan-400':'text-zinc-600'}">${m.b.toLocaleString()}</span>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-      <div class="fade-up" style="animation-delay:0.1s">${miniCard(user_b)}</div>
-    </div>`;
+  const metrics=[{label:'Dev Score',a:user_a.score.total,b:user_b.score.total},{label:'Stars',a:user_a.stats.total_stars,b:user_b.stats.total_stars},{label:'Followers',a:user_a.profile.followers,b:user_b.profile.followers},{label:'Repos',a:user_a.stats.own_repos,b:user_b.stats.own_repos},{label:'Languages',a:Object.keys(user_a.languages).length,b:Object.keys(user_b.languages).length},{label:'Streak',a:user_a.streaks.current||0,b:user_b.streaks.current||0}];
+  document.getElementById('compareSectionContent').innerHTML=`<div class="grid grid-cols-1 lg:grid-cols-[1fr_180px_1fr] gap-6 items-start"><div class="fade-up" style="animation-delay:0s">${miniCard(user_a)}</div><div class="flex flex-col items-center py-4 lg:py-8"><div class="font-black text-4xl text-zinc-700 mb-6">VS</div><div class="space-y-2 w-full">${metrics.map(m=>{const aW=m.a>m.b,bW=m.b>m.a;return`<div class="glass rounded-lg py-2 px-3 text-center"><p class="font-mono text-xs text-zinc-600 mb-1">${m.label}</p><div class="flex items-center justify-between"><span class="font-black text-sm ${aW?'text-cyan-400':'text-zinc-600'}">${m.a.toLocaleString()}</span><span class="font-mono text-xs text-zinc-700">${aW?'←':bW?'→':'='}</span><span class="font-black text-sm ${bW?'text-cyan-400':'text-zinc-600'}">${m.b.toLocaleString()}</span></div></div>`;}).join('')}</div></div><div class="fade-up" style="animation-delay:0.1s">${miniCard(user_b)}</div></div>`;
 }
 
 // ============================================================
@@ -1001,23 +1231,18 @@ function renderCompare(data){
 // ============================================================
 let currentUsername='';
 async function exportPDF(){
-  const btn=document.getElementById('exportBtn');
-  const btn2=document.getElementById('exportBtn2');
+  const btn=document.getElementById('exportBtn');const btn2=document.getElementById('exportBtn2');
   [btn,btn2].forEach(b=>{if(b){b.textContent='GENERATING...';b.disabled=true;}});
   try{
     const el=document.getElementById('dossier');
     const canvas=await html2canvas(el,{backgroundColor:'#09090b',scale:1.5,useCORS:true,allowTaint:true,logging:false});
-    const{jsPDF}=window.jspdf;
-    const w=canvas.width/1.5,h=canvas.height/1.5;
+    const{jsPDF}=window.jspdf;const w=canvas.width/1.5,h=canvas.height/1.5;
     const pdf=new jsPDF({orientation:w>h?'landscape':'portrait',unit:'px',format:[w,h]});
     pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,w,h);
     pdf.save(`git-spectre-${currentUsername||'report'}.pdf`);
-  }catch(e){
-    console.error('PDF export error:',e);
-    alert('PDF export failed. Please try on a modern Chromium browser.');
-  }finally{
-    [btn,btn2].forEach(b=>{if(b){b.textContent='EXPORT PDF';b.disabled=false;}});
-  }
+    showToast('PDF exported!','📄');
+  }catch(e){console.error(e);showToast('PDF export failed','❌');}
+  finally{[btn,btn2].forEach(b=>{if(b){b.textContent='EXPORT PDF';b.disabled=false;}});}
 }
 
 // ============================================================
@@ -1025,22 +1250,18 @@ async function exportPDF(){
 // ============================================================
 function updateShareURL(username){
   currentUsername=username;
-  const url=new URL(window.location.href);
-  url.searchParams.set('u',username);
+  const url=new URL(window.location.href);url.searchParams.set('u',username);
   window.history.pushState({},'',url.toString());
 }
-
 function copyShareLink(){
   const url=window.location.href;
   navigator.clipboard.writeText(url).then(()=>{
-    const btn=document.getElementById('shareBtn');
-    const orig=btn.innerHTML;
+    showToast('Link copied!','🔗');
+    const btn=document.getElementById('shareBtn');const orig=btn.innerHTML;
     btn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> COPIED!';
-    btn.style.color='#22d3ee';
-    setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';},2000);
+    btn.style.color='#22d3ee';setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';},2000);
   }).catch(()=>alert('Copy: '+url));
 }
-
 function initFromURL(){
   const params=new URLSearchParams(window.location.search);
   const u=params.get('u')||params.get('username');
@@ -1048,11 +1269,30 @@ function initFromURL(){
 }
 
 // ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'){if(e.key==='Escape'){document.activeElement.blur();hideHistory();}return;}
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='k'){e.preventDefault();document.getElementById('searchInput').focus();}
+    else if(e.key==='e'){e.preventDefault();exportPDF();}
+    else if(e.key==='d'){e.preventDefault();openCompareModal();}
+    else if(e.key==='b'){e.preventDefault();openBatchModal();}
+    else if(e.key==='t'){e.preventDefault();toggleTheme();}
+  }
+  if(e.key==='Escape'){closeVault();closeCompareModal();closeBatchModal();hideHistory();}
+});
+
+// ============================================================
 // MAIN SCAN
 // ============================================================
 async function runScan(){
-  const username=document.getElementById('searchInput').value.trim();
+  const raw=document.getElementById('searchInput').value.trim();
+  const username=extractUsername(raw);
   if(!username)return;
+  document.getElementById('searchInput').value=username;
+  hideHistory();
   const eb=document.getElementById('errorBox');eb.classList.add('hidden');eb.textContent='';
   document.getElementById('scanTarget').textContent=`> Initiating deep scan on: ${username}`;
   document.getElementById('scanOverlay').classList.remove('hidden');
@@ -1071,15 +1311,15 @@ async function runScan(){
 }
 
 // ============================================================
-// RENDER DOSSIER (v2)
+// RENDER DOSSIER (v2.1 — all panels)
 // ============================================================
 function renderDossier(data){
-  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list}=data;
+  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list,community,commit_messages,fork_details,lang_repo_counts}=data;
 
   // Cached badge
   const cb=document.getElementById('cachedBadge');
   if(cached){cb.classList.remove('hidden');document.getElementById('cachedTime').textContent='last 5 min';}
-  else{cb.classList.add('hidden');}
+  else cb.classList.add('hidden');
 
   // Profile
   document.getElementById('avatar').src=profile.avatar_url;
@@ -1098,7 +1338,7 @@ function renderDossier(data){
   document.getElementById('metaJoined').innerHTML=calSvg+'Since '+profile.created_at;
   const blogEl=document.getElementById('metaBlog');
   if(profile.blog){blogEl.innerHTML=`${lnkSvg}<a href="${profile.blog.startsWith('http')?profile.blog:'https://'+profile.blog}" target="_blank" rel="noopener" class="hover:text-cyan-400 transition-colors">${profile.blog.replace(/^https?:\/\//,'').slice(0,28)}</a>`;}
-  else{blogEl.innerHTML='';}
+  else blogEl.innerHTML='';
 
   const badge=document.getElementById('archetypeBadge');
   badge.textContent=archetype.label;
@@ -1110,34 +1350,37 @@ function renderDossier(data){
   animCount(document.getElementById('statFollowers'),profile.followers);
   animCount(document.getElementById('statFollowing'),profile.following);
 
-  // v2 sections
+  // All builders
   buildScoreRing(score);
   buildOrgs(orgs);
   buildStreaks(streaks);
   buildHeatmap(heatmap);
+  buildCommunity(community||{prs_opened:0,prs_merged:0,issues_opened:0,issue_comments:0,external_repos:[]});
   buildActivityHours(activity_hours);
   buildTagCloud(topics);
   buildLangEvolution(lang_evolution);
   buildGistSection(gists);
+  buildCommitQuality(commit_messages||[]);
+  buildForkPanel(stats,fork_details||[]);
   buildStatLists(top_repos,followers_list||[],following_list||[]);
 
-  // Charts
+  // Radar
+  _rLangs=languages;_rCounts=lang_repo_counts||{};_rMode='kb';
+  document.getElementById('radarToggleBtn').textContent='KB';
+  document.getElementById('radarSubtitle').textContent='KB of code per language';
   const entries=Object.entries(languages);
   if(entries.length){buildRadar(entries.map(([k])=>k),entries.map(([,v])=>Math.round(v)));buildBars(languages);}
+
   buildRepos(top_repos);
-
-  // Share URL
+  populateShareCard(data);
   updateShareURL(profile.login);
+  saveToHistory(profile.login,profile.avatar_url);
 
-  // Show dossier + export buttons
+  // Show UI
   document.getElementById('scanOverlay').classList.add('hidden');
   document.getElementById('dossier').classList.remove('hidden');
-  document.getElementById('exportBtn').classList.remove('hidden');
-  document.getElementById('exportBtn').classList.add('flex');
-  document.getElementById('exportBtn2').classList.remove('hidden');
-  document.getElementById('exportBtn2').classList.add('flex');
+  ['exportBtn','exportBtn2','cardBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('hidden');el.classList.add('flex');}});
   document.getElementById('heroSection').classList.add('hidden');
-
   setTimeout(()=>document.getElementById('dossier').scrollIntoView({behavior:'smooth',block:'start'}),100);
   refreshRateLimit();
 }
@@ -1146,6 +1389,7 @@ function renderDossier(data){
 // INIT
 // ============================================================
 window.addEventListener('load',()=>{
+  initTheme();
   refreshRateLimit();
   initFromURL();
 });
