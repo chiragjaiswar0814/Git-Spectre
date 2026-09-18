@@ -56,7 +56,7 @@
     .avatar-ring { animation:ring-pulse 2.5s ease-in-out infinite; }
     .glass { background:rgba(255,255,255,.04);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08); }
     .grad-border { position:relative;border-radius:1rem; }
-    .grad-border::before { content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(34,211,238,.4),rgba(139,92,246,.4),rgba(34,211,238,.1));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude; }
+    .grad-border::before { content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(34,211,238,.4),rgba(139,92,246,.4),rgba(34,211,238,.1));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none; }
     #searchInput:focus { box-shadow:0 0 0 2px #22d3ee66,0 0 40px #22d3ee22; }
     .repo-card { transition:all .25s ease; }
     .repo-card:hover { background:rgba(34,211,238,.06);border-color:rgba(34,211,238,.3);transform:translateY(-2px); }
@@ -198,7 +198,7 @@
         <h2 class="font-black text-lg">API VAULT</h2>
         <p class="text-xs text-zinc-400 mt-0.5">Token stored in localStorage. Never sent to a 3rd party.</p>
       </div>
-      <button onclick="closeVault()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
+      <button type="button" onclick="closeVault()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -223,7 +223,7 @@
         <h2 class="font-black text-lg">DUAL TARGET SCAN</h2>
         <p class="text-xs text-zinc-400 mt-0.5">Accepts usernames or full GitHub profile URLs.</p>
       </div>
-      <button onclick="closeCompareModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
+      <button type="button" onclick="closeCompareModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -255,7 +255,7 @@
         <h2 class="font-black text-lg">BATCH SCREENER</h2>
         <p class="text-xs text-zinc-400 mt-0.5">Rank up to 10 profiles by Dev Score. One username or URL per line.</p>
       </div>
-      <button onclick="closeBatchModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
+      <button type="button" onclick="closeBatchModal()" class="text-zinc-500 hover:text-zinc-200 transition-colors">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -312,7 +312,7 @@
     <div id="historyDropdown" class="absolute top-full mt-2 left-0 right-0 glass grad-border rounded-xl overflow-hidden z-50 hidden">
       <div class="flex items-center justify-between px-4 py-2 border-b border-white/5">
         <p class="font-mono text-xs text-zinc-600 uppercase tracking-widest">Recent Scans</p>
-        <button onclick="clearHistory();hideHistory()" class="font-mono text-xs text-zinc-700 hover:text-red-400 transition-colors">Clear</button>
+        <button type="button" onmousedown="clearHistory();document.getElementById('historyList').innerHTML='';hideHistory()" class="font-mono text-xs text-zinc-700 hover:text-red-400 transition-colors">Clear</button>
       </div>
       <div id="historyList"></div>
     </div>
@@ -852,7 +852,7 @@ function showHistory(){
 }
 function hideHistory(){document.getElementById('historyDropdown').classList.add('hidden');}
 function selectHistory(login){document.getElementById('searchInput').value=login;hideHistory();runScan();}
-function clearHistory(){localStorage.removeItem('gs_history');}
+function clearHistory(){localStorage.removeItem('gs_history');const list=document.getElementById('historyList');if(list)list.innerHTML='';}
 
 // ============================================================
 // SCORE RING
