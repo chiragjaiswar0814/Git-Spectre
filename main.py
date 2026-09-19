@@ -571,6 +571,113 @@ def _compute_lang_repo_counts(repos: List[Dict]) -> Dict[str, int]:
     return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True))
 
 
+def _compute_peak_hour(events: List[Dict]) -> Dict[str, Any]:
+    """Peak coding hour + weekday persona derived from public events."""
+    hour_counts = [0] * 24
+    day_counts  = [0] * 7
+    for e in events:
+        ts = e.get("created_at", "")
+        if not ts:
+            continue
+        try:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            hour_counts[dt.hour] += 1
+            day_counts[dt.weekday()] += 1
+        except Exception:
+            pass
+    if not any(hour_counts):
+        return {"hour": "—", "day": "—", "persona": "Ghost Coder", "is_night_owl": False}
+    peak_h = hour_counts.index(max(hour_counts))
+    peak_d = day_counts.index(max(day_counts))
+    days   = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    if peak_h == 0:      h_label = "12 AM"
+    elif peak_h < 12:    h_label = f"{peak_h} AM"
+    elif peak_h == 12:   h_label = "12 PM"
+    else:                h_label = f"{peak_h - 12} PM"
+    night = peak_h >= 22 or peak_h <= 4
+    if night:                  persona = "🌙 Night Owl"
+    elif 5 <= peak_h <= 8:     persona = "🌅 Early Bird"
+    elif 9 <= peak_h <= 17:    persona = "☀️ 9-to-5 Dev"
+    else:                      persona = "🌆 Evening Coder"
+    return {"hour": h_label, "day": days[peak_d], "persona": persona, "is_night_owl": night}
+
+
+def _compute_star_velocity(repos: List[Dict], profile: Dict) -> float:
+    """Stars earned per year of account existence (own repos only)."""
+    own_repos   = [r for r in repos if not r.get("fork")]
+    total_stars = sum(r.get("stargazers_count", 0) for r in own_repos)
+    try:
+        age_years = max(
+            (datetime.now(timezone.utc)
+             - datetime.fromisoformat(profile.get("created_at", "").replace("Z", "+00:00"))).days / 365,
+            0.1,
+        )
+    except Exception:
+        age_years = 1.0
+    return round(total_stars / age_years, 1)
+
+
+def _compute_roast(langs: Dict, repos: List[Dict], profile: Dict,
+                   events: List[Dict], streaks: Dict) -> str:
+    """Data-grounded humorous developer roast (max 2 sentences)."""
+    own       = [r for r in repos if not r.get("fork")]
+    stars     = sum(r.get("stargazers_count", 0) for r in own)
+    followers = profile.get("followers", 0)
+    following = profile.get("following", 0)
+    forks_cnt = len([r for r in repos if r.get("fork")])
+    no_desc   = sum(1 for r in own if not r.get("description"))
+    streak    = streaks.get("current", 0)
+    n         = len(own) or 1
+    lines: List[str] = []
+    if no_desc / n > 0.7:
+        lines.append("Most repos have no description — mystery wrapped in a .gitignore.")
+    if forks_cnt > n * 1.5 and forks_cnt > 3:
+        lines.append(f"Forked {forks_cnt} repos, created {n}. Collector energy, not creator energy.")
+    if streak == 0:
+        lines.append("Commit streak: 0. The GitHub grass is growing back.")
+    elif streak < 3:
+        lines.append(f"A {streak}-day streak. Barely keeping the garden alive.")
+    if following and followers and following > followers * 3:
+        lines.append(f"Following {following}, only {followers} follow back. Unrequited code love.")
+    if len(langs) == 1 and langs:
+        lines.append(f"Only {list(langs.keys())[0]}. Loyalty is admirable. Tunnel vision, less so.")
+    elif len(langs) > 12:
+        lines.append(f"Codes in {len(langs)} languages — polyglot or commitment issues?")
+    if stars == 0:
+        lines.append("Zero stars. Not even from a rubber duck.")
+    elif stars < 5:
+        lines.append(f"Only {stars} star{'s' if stars > 1 else ''}. Keep shipping.")
+    if not lines:
+        lines.append("Suspiciously well-rounded. Either a 10× engineer or very good at hiding skeletons.")
+    return " ".join(lines[:2])
+
+
+def _compute_social_graph(followers_raw: List[Dict], following_raw: List[Dict]) -> Dict[str, Any]:
+    """Mutual follows, fans, and one-sided following from fetched lists."""
+    fl = {f["login"].lower() for f in followers_raw}
+    fw = {f["login"].lower() for f in following_raw}
+    mutual   = fl & fw
+    fans     = fl - fw
+    one_way  = fw - fl
+
+    def _fmt(src: List[Dict], s: set) -> List[Dict]:
+        return [
+            {"login": f["login"],
+             "avatar_url": f.get("avatar_url", ""),
+             "url": f.get("html_url", f"https://github.com/{f['login']}")}
+            for f in src if f["login"].lower() in s
+        ][:5]
+
+    return {
+        "mutual_count":         len(mutual),
+        "fans_count":           len(fans),
+        "following_only_count": len(one_way),
+        "mutual":               _fmt(followers_raw, mutual),
+        "fans":                 _fmt(followers_raw, fans),
+        "following_only":       _fmt(following_raw, one_way),
+    }
+
+
 # ------------------------------------------------------------
 # Core analysis (shared by /analyze and /compare)
 # ------------------------------------------------------------
@@ -603,8 +710,9 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
             logger.exception("Unexpected error for '%s'", username)
             raise HTTPException(502, f"Unexpected error: {exc}")
 
-    lang_bytes  = _aggregate_languages(repos)
-    total_stars = sum(r.get("stargazers_count", 0) for r in repos if not r.get("fork"))
+    lang_bytes   = _aggregate_languages(repos)
+    total_stars  = sum(r.get("stargazers_count", 0) for r in repos if not r.get("fork"))
+    streaks_data = _compute_streaks(events)
 
     result: Dict[str, Any] = {
         "cached": False,
@@ -635,7 +743,7 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         "score":         _compute_score(lang_bytes, repos, profile, events),
         "heatmap":       _compute_heatmap(events),
         "activity_hours": _compute_activity_hours(events),
-        "streaks":       _compute_streaks(events),
+        "streaks":       streaks_data,
         "topics":        _aggregate_topics(repos),
         "lang_evolution": _language_evolution(repos),
         "gists":          _gist_stats(gists),
@@ -643,6 +751,10 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         "community":      _compute_community(events, username),
         "fork_details":   _compute_fork_details(repos),
         "lang_repo_counts": _compute_lang_repo_counts(repos),
+        "peak_hour":        _compute_peak_hour(events),
+        "star_velocity":    _compute_star_velocity(repos, profile),
+        "roast":            _compute_roast(lang_bytes, repos, profile, events, streaks_data),
+        "social_graph":     _compute_social_graph(followers_raw, following_raw),
         "orgs": [
             {
                 "login":      o["login"],
@@ -816,6 +928,35 @@ async def rate_limit_endpoint() -> Dict[str, Any]:
         "reset":     core.get("reset", 0),
         "used":      core.get("used", 0),
     }
+
+
+@app.get("/api/readme/{username}")
+async def get_readme(username: str) -> Dict[str, Any]:
+    """Fetch the user's profile README from their username/username repo."""
+    import base64 as _b64
+    token   = os.getenv("GITHUB_TOKEN")
+    headers = _build_headers(token)
+    async with httpx.AsyncClient(timeout=httpx.Timeout(12.0)) as client:
+        resp = await client.get(
+            f"{GITHUB_API}/repos/{username}/{username}/readme",
+            headers=headers,
+        )
+        if resp.status_code in (404, 403, 422):
+            return {"found": False, "content": "", "html_url": ""}
+        try:
+            resp.raise_for_status()
+        except Exception:
+            return {"found": False, "content": "", "html_url": ""}
+        data = resp.json()
+        try:
+            content = _b64.b64decode(data.get("content", "")).decode("utf-8", errors="replace")
+        except Exception:
+            content = ""
+        return {
+            "found":    bool(content.strip()),
+            "content":  content,
+            "html_url": data.get("html_url", ""),
+        }
 
 
 # ------------------------------------------------------------

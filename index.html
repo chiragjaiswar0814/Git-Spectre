@@ -92,6 +92,15 @@
 
     /* ── Quality dot ── */
     .quality-dot { width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle; }
+
+    /* ── Roast / terminal quote ── */
+    @keyframes typewriterBlink { 0%,100%{opacity:1}50%{opacity:0} }
+    .cursor-blink { animation:typewriterBlink 1.1s step-end infinite; }
+
+    /* ── Social graph avatars ── */
+    .sg-avatar { width:28px;height:28px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.1);margin-left:-8px;transition:transform .2s;flex-shrink:0; }
+    .sg-avatar:first-child { margin-left:0; }
+    .sg-avatar:hover { transform:scale(1.25);z-index:10; }
   </style>
 </head>
 
@@ -382,10 +391,17 @@
         </div>
         <div id="orgChips"></div>
         <div id="streakBadges"></div>
+        <!-- Peak Coding Persona badge -->
+        <div id="peakPersonaBadge" class="hidden mt-3"></div>
       </div>
       <div class="shrink-0 glass rounded-xl p-4 max-w-xs text-center md:text-left">
         <p class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">ARCHETYPE ANALYSIS</p>
         <p id="archetypeDesc" class="text-sm text-zinc-300 leading-relaxed"></p>
+        <!-- Roast line -->
+        <div id="roastBox" class="hidden mt-3 border-t border-white/5 pt-3">
+          <p class="font-mono text-xs text-zinc-600 uppercase tracking-widest mb-1">// roast.exe</p>
+          <p id="roastText" class="font-mono text-xs text-zinc-500 leading-relaxed italic"></p><span class="cursor-blink font-mono text-xs text-cyan-600">_</span>
+        </div>
         <button id="shareBtn" onclick="copyShareLink()"
           class="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-white/10 font-mono text-xs text-zinc-400 hover:text-zinc-200 hover:border-white/20 transition-all">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
@@ -411,6 +427,7 @@
       <div class="text-center">
         <p class="font-mono text-2xl font-bold text-yellow-400" id="statStars">0</p>
         <p class="text-xs font-mono text-zinc-500 mt-0.5 uppercase tracking-widest">Stars</p>
+        <p id="starVelocityBadge" class="hidden font-mono text-xs text-yellow-600 mt-0.5"></p>
       </div>
       <div class="border-t border-white/5 mt-3 pt-2 space-y-1.5 overflow-y-auto" style="max-height:110px" id="starsMiniList"></div>
     </div>
@@ -599,7 +616,38 @@
     <div id="forkList" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
   </div>
 
-  <!-- 9. TOP REPOSITORIES -->
+  <!-- 9. SOCIAL GRAPH -->
+  <div id="socialGraphCard" class="hidden glass grad-border rounded-2xl p-6 mb-6">
+    <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-4">Social Graph</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Mutual -->
+      <div class="bg-white/3 border border-white/5 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="font-mono text-xs text-cyan-400 uppercase tracking-widest">🤝 Mutual</p>
+          <span id="sgMutualCount" class="font-black text-lg text-cyan-400">0</span>
+        </div>
+        <div id="sgMutualList" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <!-- Fans -->
+      <div class="bg-white/3 border border-white/5 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="font-mono text-xs text-violet-400 uppercase tracking-widest">🌟 Fans</p>
+          <span id="sgFansCount" class="font-black text-lg text-violet-400">0</span>
+        </div>
+        <div id="sgFansList" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <!-- One-way -->
+      <div class="bg-white/3 border border-white/5 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="font-mono text-xs text-zinc-500 uppercase tracking-widest">➡️ Unrequited</p>
+          <span id="sgOneWayCount" class="font-black text-lg text-zinc-500">0</span>
+        </div>
+        <div id="sgOneWayList" class="flex flex-wrap gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. TOP REPOSITORIES -->
   <div class="glass grad-border rounded-2xl p-6">
     <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-5">
       Top Repositories &nbsp;<span class="text-cyan-400/60 font-mono normal-case text-xs">(by stars)</span>
@@ -1061,6 +1109,26 @@ function buildCommitQuality(messages){
 }
 
 // ============================================================
+// SOCIAL GRAPH PANEL
+// ============================================================
+function buildSocialGraph(sg){
+  const el=document.getElementById('socialGraphCard');
+  if(!sg||(!sg.mutual_count&&!sg.fans_count&&!sg.following_only_count)){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  document.getElementById('sgMutualCount').textContent=sg.mutual_count||0;
+  document.getElementById('sgFansCount').textContent=sg.fans_count||0;
+  document.getElementById('sgOneWayCount').textContent=sg.following_only_count||0;
+  function avatarRow(list,el){
+    const e=document.getElementById(el);
+    if(!list||!list.length){e.innerHTML='<span class="font-mono text-xs text-zinc-700">none in top 30</span>';return;}
+    e.innerHTML=list.map(u=>`<a href="${u.url}" target="_blank" rel="noopener" title="@${u.login}"><img src="${u.avatar_url}" alt="${u.login}" class="sg-avatar" loading="lazy"/></a>`).join('');
+  }
+  avatarRow(sg.mutual,'sgMutualList');
+  avatarRow(sg.fans,'sgFansList');
+  avatarRow(sg.following_only,'sgOneWayList');
+}
+
+// ============================================================
 // FORK PANEL
 // ============================================================
 function buildForkPanel(stats,forkDetails){
@@ -1314,7 +1382,7 @@ async function runScan(){
 // RENDER DOSSIER (v2.1 — all panels)
 // ============================================================
 function renderDossier(data){
-  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list,community,commit_messages,fork_details,lang_repo_counts}=data;
+  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list,community,commit_messages,fork_details,lang_repo_counts,peak_hour,star_velocity,roast,social_graph}=data;
 
   // Cached badge
   const cb=document.getElementById('cachedBadge');
@@ -1362,7 +1430,26 @@ function renderDossier(data){
   buildGistSection(gists);
   buildCommitQuality(commit_messages||[]);
   buildForkPanel(stats,fork_details||[]);
+  buildSocialGraph(social_graph||null);
   buildStatLists(top_repos,followers_list||[],following_list||[]);
+
+  // Peak coding persona
+  const ppEl=document.getElementById('peakPersonaBadge');
+  if(peak_hour&&peak_hour.persona&&peak_hour.persona!=='Ghost Coder'){
+    ppEl.classList.remove('hidden');
+    ppEl.innerHTML=`<div class="flex flex-wrap gap-2"><div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20"><span class="font-mono text-xs font-bold text-violet-300">${peak_hour.persona}</span><span class="font-mono text-xs text-zinc-600">· peaks ${peak_hour.hour}</span><span class="font-mono text-xs text-zinc-700">· ${peak_hour.day}s</span></div></div>`;
+  } else { ppEl.classList.add('hidden'); }
+
+  // Roast
+  const roastBox=document.getElementById('roastBox');
+  const roastText=document.getElementById('roastText');
+  if(roast&&roast.length>0){roastBox.classList.remove('hidden');roastText.textContent=roast;}
+  else roastBox.classList.add('hidden');
+
+  // Star velocity
+  const svEl=document.getElementById('starVelocityBadge');
+  if(star_velocity&&star_velocity>0){svEl.classList.remove('hidden');svEl.textContent=`★ ${star_velocity}/yr`;}
+  else svEl.classList.add('hidden');
 
   // Radar
   _rLangs=languages;_rCounts=lang_repo_counts||{};_rMode='kb';
