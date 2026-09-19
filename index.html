@@ -447,23 +447,26 @@
     </div>
   </div>
 
-  <!-- 3. CONTRIBUTION HEATMAP -->
+  <!-- 3. CONTRIBUTION HEATMAP (full year) -->
   <div class="glass grad-border rounded-2xl p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
       <div>
-        <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300">Contribution Heatmap</h2>
-        <p class="text-xs font-mono text-zinc-600 mt-0.5">Last 91 days of push activity</p>
+        <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300">Contribution Calendar</h2>
+        <p id="heatmapSubtitle" class="text-xs font-mono text-zinc-600 mt-0.5">Last 12 months of push activity</p>
       </div>
-      <div class="flex items-center gap-2 text-xs font-mono text-zinc-600">
-        <span>Less</span>
-        <div class="flex gap-0.5">
-          <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(255,255,255,0.05)"></div>
-          <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.2)"></div>
-          <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.45)"></div>
-          <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.7)"></div>
-          <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.95)"></div>
+      <div class="flex items-center gap-3">
+        <span id="heatmapStats" class="font-mono text-xs text-zinc-600"></span>
+        <div class="flex items-center gap-1.5 text-xs font-mono text-zinc-600">
+          <span>Less</span>
+          <div class="flex gap-0.5">
+            <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(255,255,255,0.05)"></div>
+            <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.2)"></div>
+            <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.45)"></div>
+            <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.7)"></div>
+            <div class="w-2.5 h-2.5 rounded-sm" style="background:rgba(34,211,238,0.95)"></div>
+          </div>
+          <span>More</span>
         </div>
-        <span>More</span>
       </div>
     </div>
     <div id="heatmapGrid" class="overflow-x-auto"></div>
@@ -967,18 +970,103 @@ function buildStreaks(s){
 }
 
 // ============================================================
-// CONTRIBUTION HEATMAP
+// CONTRIBUTION CALENDAR (full 52-week GitHub-style)
 // ============================================================
 function buildHeatmap(data){
-  const today=new Date();const cells=[];
-  for(let i=90;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];cells.push({date:ds,count:data[ds]||0,dow:d.getDay()});}
-  const firstMon=(cells[0].dow===0?6:cells[0].dow-1);
-  const padded=[...Array(firstMon).fill(null),...cells];
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today=new Date();
+  const cells=[];
+
+  // Build 365-day array ending today
+  for(let i=364;i>=0;i--){
+    const d=new Date(today);
+    d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    cells.push({date:ds,count:data[ds]||0,dow:d.getDay(),month:d.getMonth(),dayOfMonth:d.getDate()});
+  }
+
+  // Pad left so week starts on Monday (dow 1). Sunday=0 → offset 6, Mon=1 → 0, etc.
+  const firstDow=cells[0].dow;
+  const padStart=firstDow===0?6:firstDow-1;
+  const padded=[...Array(padStart).fill(null),...cells];
+
+  // Slice into week columns
+  const weeks=[];
+  for(let i=0;i<padded.length;i+=7) weeks.push(padded.slice(i,i+7));
+
+  // Ensure last week is always 7 tall
+  while(weeks[weeks.length-1].length<7) weeks[weeks.length-1].push(null);
+
+  // Month label per column: show month name on the first week that contains the 1st
+  const monthLabels=new Array(weeks.length).fill('');
+  let lastLabelMonth=-1;
+  weeks.forEach((week,wi)=>{
+    for(const c of week){
+      if(c&&c.dayOfMonth===1&&c.month!==lastLabelMonth){
+        monthLabels[wi]=MONTHS[c.month];
+        lastLabelMonth=c.month;
+        break;
+      }
+    }
+  });
+  // Always label the first visible month
+  if(monthLabels.every(l=>!l)||!monthLabels[0]){
+    for(const c of weeks[0]){ if(c){monthLabels[0]=MONTHS[c.month];break;} }
+  }
+
   const maxC=Math.max(...cells.map(c=>c.count),1);
-  const cc=n=>{if(!n)return'rgba(255,255,255,0.04)';const p=n/maxC;return p>.75?'rgba(34,211,238,0.95)':p>.5?'rgba(34,211,238,0.65)':p>.25?'rgba(34,211,238,0.4)':'rgba(34,211,238,0.2)';};
+  const cc=n=>{
+    if(!n)return'rgba(255,255,255,0.04)';
+    const p=n/maxC;
+    return p>.75?'rgba(34,211,238,0.95)':p>.5?'rgba(34,211,238,0.65)':p>.25?'rgba(34,211,238,0.4)':'rgba(34,211,238,0.2)';
+  };
+
   const dayLabels=['Mon','','Wed','','Fri','','Sun'];
-  const cellsHtml=padded.map(c=>c?`<div class="heatmap-cell" style="width:10px;height:10px;background:${cc(c.count)};${c.count?'box-shadow:0 0 4px rgba(34,211,238,0.4)':''}" title="${c.date}: ${c.count} commit${c.count!==1?'s':''}"></div>`:`<div style="width:10px;height:10px;background:transparent"></div>`).join('');
-  document.getElementById('heatmapGrid').innerHTML=`<div class="flex gap-1.5 items-start"><div class="flex flex-col gap-0.5 mt-0.5 shrink-0">${dayLabels.map(l=>`<div class="font-mono text-zinc-700 text-right" style="font-size:9px;line-height:10px;height:10px;margin-bottom:2px">${l}</div>`).join('')}</div><div style="display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;gap:2px;overflow-x:auto;padding-bottom:4px">${cellsHtml}</div></div>`;
+
+  // Month label row
+  let html='<div style="display:flex;margin-left:2.2rem;margin-bottom:4px;gap:2px">';
+  weeks.forEach((_,wi)=>{
+    html+=`<div style="width:10px;flex-shrink:0;font-size:9px;font-family:'JetBrains Mono',monospace;color:#52525b;white-space:nowrap;overflow:visible">${monthLabels[wi]||''}</div>`;
+  });
+  html+='</div>';
+
+  // Day-label column + week grid
+  html+='<div style="display:flex;gap:0">';
+  // Day labels
+  html+='<div style="display:flex;flex-direction:column;gap:2px;margin-right:4px;flex-shrink:0">';
+  dayLabels.forEach(l=>{
+    html+=`<div style="height:10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:#52525b;text-align:right;line-height:10px;width:2rem">${l}</div>`;
+  });
+  html+='</div>';
+
+  // Week columns
+  html+='<div style="display:flex;gap:2px;flex-shrink:0">';
+  weeks.forEach(week=>{
+    html+='<div style="display:flex;flex-direction:column;gap:2px">';
+    const col=[...week];
+    while(col.length<7)col.push(null);
+    col.forEach(c=>{
+      if(c){
+        const glow=c.count?';box-shadow:0 0 4px rgba(34,211,238,0.35)':'';
+        html+=`<div class="heatmap-cell" style="width:10px;height:10px;background:${cc(c.count)}${glow}" title="${c.date}: ${c.count} commit${c.count!==1?'s':''}"></div>`;
+      } else {
+        html+='<div style="width:10px;height:10px;background:transparent"></div>';
+      }
+    });
+    html+='</div>';
+  });
+  html+='</div></div>';
+
+  document.getElementById('heatmapGrid').innerHTML=html;
+
+  // Summary line
+  const totalEvents=cells.reduce((s,c)=>s+c.count,0);
+  const activeDays=cells.filter(c=>c.count>0).length;
+  const coveredDays=cells.filter(c=>data[c.date]!==undefined).length;
+  const statsEl=document.getElementById('heatmapStats');
+  if(statsEl)statsEl.textContent=totalEvents?`${totalEvents.toLocaleString()} commits · ${activeDays} active days`:'';
+  const sub=document.getElementById('heatmapSubtitle');
+  if(sub)sub.textContent=coveredDays>300?'Last 12 months of push activity':'Last 12 months · partial data (limited by GitHub Events API)';
 }
 
 // ============================================================

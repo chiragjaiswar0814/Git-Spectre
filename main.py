@@ -183,7 +183,8 @@ async def _fetch_repos(client: httpx.AsyncClient, username: str, headers: Dict) 
 
 
 async def _fetch_events(client: httpx.AsyncClient, username: str, headers: Dict) -> List[Dict]:
-    """Fetch up to 200 public events (2 pages × 100). Used for heatmap, streaks, activity hours."""
+    """Fetch up to 1000 public events (10 pages × 100) — GitHub's hard ceiling.
+    This maximises full-year heatmap coverage for all activity levels."""
     async def _page(p: int) -> List[Dict]:
         resp = await _get_with_retry(
             client, f"{GITHUB_API}/users/{username}/events/public",
@@ -195,7 +196,8 @@ async def _fetch_events(client: httpx.AsyncClient, username: str, headers: Dict)
         resp.raise_for_status()
         return resp.json()
 
-    pages = await asyncio.gather(_page(1), _page(2))
+    # Fire all 10 pages concurrently; GitHub returns [] for pages beyond history
+    pages = await asyncio.gather(*[_page(p) for p in range(1, 11)])
     events: List[Dict] = []
     for page in pages:
         events.extend(page)
