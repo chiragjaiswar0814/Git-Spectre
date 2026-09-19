@@ -1062,11 +1062,10 @@ function buildHeatmap(data){
   // Summary line
   const totalEvents=cells.reduce((s,c)=>s+c.count,0);
   const activeDays=cells.filter(c=>c.count>0).length;
-  const coveredDays=cells.filter(c=>data[c.date]!==undefined).length;
   const statsEl=document.getElementById('heatmapStats');
-  if(statsEl)statsEl.textContent=totalEvents?`${totalEvents.toLocaleString()} commits · ${activeDays} active days`:'';
+  if(statsEl)statsEl.textContent=totalEvents?`${totalEvents.toLocaleString()} contributions · ${activeDays} active days`:'';
   const sub=document.getElementById('heatmapSubtitle');
-  if(sub)sub.textContent=coveredDays>300?'Last 12 months of push activity':'Last 12 months · partial data (limited by GitHub Events API)';
+  if(sub)sub.textContent=activeDays>0?'Last 12 months · via GitHub contribution calendar':'Last 12 months · no public contributions found';
 }
 
 // ============================================================

@@ -680,6 +680,54 @@ def _compute_social_graph(followers_raw: List[Dict], following_raw: List[Dict]) 
     }
 
 
+async def _fetch_contribution_calendar(
+    client: httpx.AsyncClient, username: str
+) -> Dict[str, int]:
+    """
+    Scrape GitHub's public contribution calendar SVG.
+    URL: https://github.com/users/{username}/contributions
+    Returns {date_str: approx_count} derived from contribution level (0-4).
+    Level → approximate commit count mapping: 1→1, 2→3, 3→6, 4→12.
+    Covers the full visible year with no authentication required.
+    """
+    import re as _re
+    LEVEL_COUNT = {0: 0, 1: 1, 2: 3, 3: 6, 4: 12}
+    try:
+        resp = await client.get(
+            f"https://github.com/users/{username}/contributions",
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Mozilla/5.0 (compatible; Git-Spectre/2.2)",
+            },
+            follow_redirects=True,
+            timeout=httpx.Timeout(15.0),
+        )
+        if resp.status_code != 200:
+            return {}
+        html = resp.text
+        counts: Dict[str, int] = {}
+        # GitHub renders cells like:
+        #   data-date="2026-09-19" ... data-level="2"
+        # Attribute order may vary; try both orderings.
+        for m in _re.finditer(
+            r'data-date="(\d{4}-\d{2}-\d{2})"[^>]*data-level="(\d)"', html
+        ):
+            lvl = int(m.group(2))
+            if lvl > 0:
+                counts[m.group(1)] = LEVEL_COUNT.get(lvl, lvl)
+        if not counts:
+            for m in _re.finditer(
+                r'data-level="(\d)"[^>]*data-date="(\d{4}-\d{2}-\d{2})"', html
+            ):
+                lvl = int(m.group(1))
+                if lvl > 0:
+                    counts[m.group(2)] = LEVEL_COUNT.get(lvl, lvl)
+        return counts
+    except Exception as exc:
+        logger.warning("Contribution calendar scrape failed for '%s': %s", username, exc)
+        return {}
+
+
 # ------------------------------------------------------------
 # Core analysis (shared by /analyze and /compare)
 # ------------------------------------------------------------
@@ -695,7 +743,10 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         try:
-            profile, repos, events, orgs, gists, followers_raw, following_raw = await asyncio.gather(
+            (
+                profile, repos, events, orgs, gists, followers_raw, following_raw,
+                cal_heatmap,
+            ) = await asyncio.gather(
                 _fetch_profile(client, username, headers),
                 _fetch_repos(client, username, headers),
                 _fetch_events(client, username, headers),
@@ -703,6 +754,7 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
                 _fetch_gists(client, username, headers),
                 _fetch_followers(client, username, headers),
                 _fetch_following(client, username, headers),
+                _fetch_contribution_calendar(client, username),
             )
         except HTTPException:
             raise
@@ -743,7 +795,9 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         "archetype":     _compute_archetype(lang_bytes, repos, profile),
         "top_repos":     _top_repos(repos, n=6),
         "score":         _compute_score(lang_bytes, repos, profile, events),
-        "heatmap":       _compute_heatmap(events),
+        # Heatmap: calendar scrape (full year, level-based) merged with events data
+        # (exact commit counts for recent dates override the level approximation)
+        "heatmap":       {**cal_heatmap, **_compute_heatmap(events)},
         "activity_hours": _compute_activity_hours(events),
         "streaks":       streaks_data,
         "topics":        _aggregate_topics(repos),
