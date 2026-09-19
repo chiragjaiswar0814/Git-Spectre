@@ -6,7 +6,7 @@
 ![GitHub REST API](https://img.shields.io/badge/GitHub%20REST%20API-v3-181717?style=flat-square&logo=github&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://git-spectre.vercel.app/)
-![Version](https://img.shields.io/badge/version-2.1-22d3ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.2-22d3ee?style=flat-square)
 
 > 🚀 **[https://git-spectre.vercel.app/](https://git-spectre.vercel.app/)** — live, no setup required.
 
@@ -19,6 +19,20 @@ I read a lot of resumes. Most of them are, frankly, identical — two pages of b
 The manual alternative is worse: I open their GitHub profile, click through a dozen repos, try to piece together what languages they actually *use* versus what they list on their CV, and after ten minutes I still don't have a clear picture. It's tedious work that doesn't need to be.
 
 So I built **Git-Spectre** — a "Threat Intel"-style dossier generator for any public GitHub user. Drop in a username **or paste a full GitHub profile URL** and within seconds you get a visual breakdown of their real language distribution, a calculated **Developer Archetype**, commit quality analysis, community activity, and their top projects by impact. A 10-minute manual process becomes a 10-second automated one.
+
+---
+
+## What's in v2.2
+
+### ✨ New Features
+
+| Feature | Description |
+|---|---|
+| **Peak Coding Persona** | 🌙 Night Owl / 🌅 Early Bird / ☀️ 9-to-5 Dev / 🌆 Evening Coder derived from event timestamps |
+| **Star Velocity** | Stars earned per year of account existence (★ N/yr) shown under Stars stat |
+| **Dev Roast** | Data-grounded 2-sentence humorous roast under `// roast.exe` in the archetype card |
+| **Social Graph** | Mutual follows, fans (followers-not-followed), and unrequited (following-not-back) with avatar stacks |
+| **Profile README API** | `GET /api/readme/{username}` — fetch the user's profile README from their `{user}/{user}` repo |
 
 ---
 
