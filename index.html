@@ -50,8 +50,7 @@
     /* ── Core ── */
     #starfield { position:fixed;inset:0;z-index:0;pointer-events:none; }
     .neon-cyan  { text-shadow:0 0 8px #22d3ee,0 0 24px #22d3ee44; }
-    @keyframes scanline { 0%{transform:translateY(-100%);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(400%);opacity:0} }
-    .scanline { position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#22d3ee,transparent);animation:scanline 2.5s linear infinite;box-shadow:0 0 12px #22d3ee; }
+
     @keyframes ring-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,.6)}50%{box-shadow:0 0 0 16px rgba(34,211,238,0)} }
     .avatar-ring { animation:ring-pulse 2.5s ease-in-out infinite; }
     .glass { background:rgba(255,255,255,.04);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08); }
@@ -101,6 +100,19 @@
     .sg-avatar { width:28px;height:28px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.1);margin-left:-8px;transition:transform .2s;flex-shrink:0; }
     .sg-avatar:first-child { margin-left:0; }
     .sg-avatar:hover { transform:scale(1.25);z-index:10; }
+
+    /* ── GitHub Wrapped ── */
+    @keyframes wrappedReveal { 0%{opacity:0;transform:scale(0.85) translateY(20px)}100%{opacity:1;transform:scale(1) translateY(0)} }
+    .wrapped-card { animation:wrappedReveal .55s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    @keyframes wrappedNum { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+    .wrapped-stat { animation:wrappedNum .5s ease forwards; }
+    .wrapped-gradient { background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 40%,#0c2340 100%); }
+    @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(340px) rotate(720deg);opacity:0} }
+    .confetti-piece { position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear infinite; }
+
+    /* ── README quality signals ── */
+    .signal-row { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+    .signal-row:last-child { border-bottom:none; }
   </style>
 </head>
 
@@ -181,6 +193,12 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
       CARD
     </button>
+    <!-- Wrapped -->
+    <button id="wrappedBtn" onclick="openWrapped()" title="GitHub Wrapped — year in review"
+      class="hidden items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20 transition-all">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      WRAPPED
+    </button>
     <!-- PDF Export -->
     <button id="exportBtn2" onclick="exportPDF()" title="Export PDF (Ctrl+E)"
       class="hidden items-center gap-2 font-mono text-xs font-semibold px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-300 hover:bg-green-500/20 transition-all">
@@ -251,6 +269,65 @@
     <button onclick="runCompare()" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold tracking-widest hover:opacity-90 transition-opacity">
       INITIATE DUAL SCAN
     </button>
+  </div>
+</div>
+
+<!-- =========================================================
+     GITHUB WRAPPED MODAL
+     ========================================================= -->
+<div id="wrappedModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+  <div class="w-full max-w-lg relative">
+    <!-- Confetti container -->
+    <div id="wrappedConfetti" class="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl"></div>
+
+    <div id="wrappedCard" class="wrapped-card wrapped-gradient rounded-3xl p-8 relative overflow-hidden border border-fuchsia-500/20" style="box-shadow:0 0 80px rgba(192,38,211,0.25),0 0 160px rgba(99,102,241,0.12)">
+      <!-- Background glow orbs -->
+      <div class="absolute -top-20 -right-20 w-60 h-60 rounded-full" style="background:radial-gradient(circle,rgba(192,38,211,0.15),transparent 70%);pointer-events:none"></div>
+      <div class="absolute -bottom-20 -left-20 w-60 h-60 rounded-full" style="background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);pointer-events:none"></div>
+
+      <!-- Header -->
+      <div class="flex items-start justify-between mb-6 relative z-10">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-mono text-xs text-fuchsia-400 uppercase tracking-widest">Git-Spectre</span>
+            <span id="wrappedYear" class="font-black text-xs text-fuchsia-300 bg-fuchsia-500/20 px-2 py-0.5 rounded-full border border-fuchsia-500/30"></span>
+          </div>
+          <h2 class="font-black text-3xl text-white tracking-tight">Your Year,<br/><span class="bg-gradient-to-r from-fuchsia-400 to-indigo-400 bg-clip-text text-transparent">Unwrapped.</span></h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="copyBadgeSnippet()" title="Copy README badge"
+            class="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 transition-all">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Copy Badge
+          </button>
+          <button type="button" onclick="closeWrapped()" class="text-zinc-400 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Avatar + identity -->
+      <div class="flex items-center gap-4 mb-7 relative z-10">
+        <img id="wAvatar" src="" class="w-14 h-14 rounded-2xl border-2 border-fuchsia-400/40" alt="">
+        <div>
+          <p id="wName" class="font-black text-xl text-white"></p>
+          <p id="wLogin" class="font-mono text-sm text-fuchsia-300"></p>
+          <p id="wAge" class="font-mono text-xs text-zinc-500 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- Stat grid -->
+      <div class="grid grid-cols-2 gap-3 mb-5 relative z-10" id="wrappedGrid"></div>
+
+      <!-- Highlights row -->
+      <div class="grid grid-cols-2 gap-3 relative z-10" id="wrappedHighlights"></div>
+
+      <!-- Footer -->
+      <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between relative z-10">
+        <span class="font-mono text-xs text-zinc-600 tracking-widest">GIT-SPECTRE.VERCEL.APP</span>
+        <span class="font-mono text-xs text-fuchsia-700">✦ Wrapped</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -368,7 +445,7 @@
 
   <!-- 1. PROFILE HEADER -->
   <div id="headerCard" class="glass grad-border rounded-2xl p-6 mb-6 relative overflow-hidden">
-    <div class="scanline"></div>
+
     <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
       <div class="relative shrink-0">
         <img id="avatar" src="" alt="Avatar" class="w-28 h-28 rounded-2xl border-2 border-cyan-500/30 avatar-ring object-cover" />
@@ -484,6 +561,11 @@
         <p class="font-mono text-2xl font-bold text-green-400" id="comPrsMerged">0</p>
         <p class="font-mono text-xs text-zinc-500 mt-1">PRs Merged</p>
       </div>
+      <!-- PR Merge Rate -->
+      <div class="text-center">
+        <p class="font-mono text-2xl font-bold" id="comMergeRate" style="color:#10b981">—</p>
+        <p class="font-mono text-xs text-zinc-500 mt-1">Merge Rate</p>
+      </div>
       <div class="text-center">
         <p class="font-mono text-2xl font-bold text-yellow-400" id="comIssues">0</p>
         <p class="font-mono text-xs text-zinc-500 mt-1">Issues Opened</p>
@@ -491,10 +573,6 @@
       <div class="text-center">
         <p class="font-mono text-2xl font-bold text-violet-400" id="comComments">0</p>
         <p class="font-mono text-xs text-zinc-500 mt-1">Comments</p>
-      </div>
-      <div class="text-center">
-        <p class="font-mono text-2xl font-bold text-pink-400" id="comExternal">0</p>
-        <p class="font-mono text-xs text-zinc-500 mt-1">Ext. Repos</p>
       </div>
     </div>
     <div id="externalRepos"></div>
@@ -648,6 +726,41 @@
         <div id="sgOneWayList" class="flex flex-wrap gap-1.5"></div>
       </div>
     </div>
+  </div>
+
+  <!-- 9.5 README QUALITY -->
+  <div id="readmeQualityCard" class="hidden glass grad-border rounded-2xl p-6 mb-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300">README Quality</h2>
+        <p class="text-xs font-mono text-zinc-600 mt-0.5">Profile README signal analysis</p>
+      </div>
+      <a id="readmeQualityLink" href="#" target="_blank" rel="noopener"
+        class="font-mono text-xs text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+        View README
+      </a>
+    </div>
+    <div class="flex items-center gap-6 mb-5">
+      <!-- Score gauge -->
+      <div class="relative shrink-0" style="width:90px;height:90px">
+        <svg width="90" height="90" class="-rotate-90">
+          <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
+          <circle id="readmeArc" cx="45" cy="45" r="38" fill="none" stroke="#10b981" stroke-width="8"
+            stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="238.76"
+            style="transition:stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span id="readmeScore" class="font-black text-xl text-white">0</span>
+          <span class="font-mono text-xs text-zinc-600">/100</span>
+        </div>
+      </div>
+      <div class="flex-1">
+        <p id="readmeGrade" class="font-black text-lg mb-1"></p>
+        <p id="readmeDesc" class="font-mono text-xs text-zinc-500 leading-relaxed"></p>
+      </div>
+    </div>
+    <div id="readmeSignals" class="space-y-0"></div>
   </div>
 
   <!-- 10. TOP REPOSITORIES -->
@@ -1154,16 +1267,22 @@ function buildGistSection(gists){
 // ============================================================
 // COMMUNITY PANEL
 // ============================================================
-function buildCommunity(community){
+function buildCommunity(community, prMergeRate){
   const el=document.getElementById('communityCard');
   const total=community.prs_opened+community.prs_merged+community.issues_opened+community.issue_comments+(community.external_repos||[]).length;
   if(!total){el.classList.add('hidden');return;}
   el.classList.remove('hidden');
   animCount(document.getElementById('comPrsOpened'),community.prs_opened);
   animCount(document.getElementById('comPrsMerged'),community.prs_merged);
+  // PR Merge Rate
+  const mrEl=document.getElementById('comMergeRate');
+  if(prMergeRate!=null){
+    const col=prMergeRate>=75?'#10b981':prMergeRate>=40?'#f59e0b':'#ef4444';
+    mrEl.textContent=prMergeRate+'%';
+    mrEl.style.color=col;
+  } else { mrEl.textContent='—'; mrEl.style.color='#71717a'; }
   animCount(document.getElementById('comIssues'),community.issues_opened);
   animCount(document.getElementById('comComments'),community.issue_comments);
-  animCount(document.getElementById('comExternal'),(community.external_repos||[]).length);
   const extEl=document.getElementById('externalRepos');
   if((community.external_repos||[]).length){
     extEl.innerHTML=`<p class="font-mono text-xs text-zinc-600 uppercase tracking-widest mb-2 mt-4 pt-4 border-t border-white/5">External Contributions</p><div class="flex flex-wrap gap-2">${community.external_repos.map(r=>`<a href="${r.url}" target="_blank" rel="noopener" class="font-mono text-xs text-zinc-400 hover:text-cyan-400 transition-colors px-2 py-1 rounded bg-white/5 border border-white/10 hover:border-cyan-500/30">${r.name}</a>`).join('')}</div>`;
@@ -1196,6 +1315,115 @@ function buildCommitQuality(messages){
 }
 
 // ============================================================
+// README QUALITY
+// ============================================================
+function buildReadmeQuality(rq){
+  const el=document.getElementById('readmeQualityCard');
+  if(!rq||!rq.found){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  const score=rq.score||0;
+  const circ=238.76;
+  const offset=circ*(1-score/100);
+  const arc=document.getElementById('readmeArc');
+  const scoreEl=document.getElementById('readmeScore');
+  const gradeEl=document.getElementById('readmeGrade');
+  const descEl=document.getElementById('readmeDesc');
+  const linkEl=document.getElementById('readmeQualityLink');
+  if(rq.html_url)linkEl.href=rq.html_url;
+  // Color by score
+  const col=score>=80?'#10b981':score>=50?'#f59e0b':'#ef4444';
+  const grade=score>=80?'🏆 Excellent README':score>=60?'✅ Good README':score>=40?'⚠️ Needs Work':'❌ Minimal README';
+  const desc=score>=80?'Profile README hits all the marks — badges, visuals, links, structure.'
+    :score>=60?'Solid README. A few improvements (GIFs, badges) could push it to excellent.'
+    :score>=40?'Basic presence. Consider adding badges, images, and more detail.'
+    :'Very sparse or missing profile README. A great README boosts visibility significantly.';
+  arc.style.stroke=col;
+  arc.style.strokeDashoffset=offset;
+  animCount(scoreEl,score,1000);
+  gradeEl.textContent=grade; gradeEl.style.color=col;
+  descEl.textContent=desc;
+  // Signals
+  const sigLabels={has_badges:'Badges',has_gif_or_img:'Images / GIFs',has_links:'Hyperlinks',is_long:'Length ≥ 300 chars',has_headers:'Headers (##)',has_code_block:'Code blocks'};
+  const sigEl=document.getElementById('readmeSignals');
+  const sigs=rq.signals||{};
+  sigEl.innerHTML=Object.entries(sigLabels).map(([k,label])=>{
+    const ok=sigs[k];
+    return`<div class="signal-row"><span style="font-size:14px">${ok?'✅':'❌'}</span><span class="font-mono text-xs ${ok?'text-zinc-300':'text-zinc-600'}">${label}</span><span class="ml-auto font-mono text-xs ${ok?'text-green-400':'text-zinc-700'}">${ok?'+pts':'—'}</span></div>`;
+  }).join('');
+}
+
+// ============================================================
+// GITHUB WRAPPED
+// ============================================================
+let _wrappedData=null,_wrappedUsername='';
+
+function openWrapped(){
+  if(!_wrappedData)return;
+  const m=document.getElementById('wrappedModal');
+  m.classList.remove('hidden');m.classList.add('flex');
+  renderWrapped(_wrappedData);
+  spawnConfetti();
+}
+function closeWrapped(){
+  const m=document.getElementById('wrappedModal');
+  m.classList.add('hidden');m.classList.remove('flex');
+}
+document.getElementById('wrappedModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeWrapped();});
+
+function spawnConfetti(){
+  const el=document.getElementById('wrappedConfetti');
+  el.innerHTML='';
+  const colors=['#f59e0b','#10b981','#06b6d4','#8b5cf6','#f43f5e','#22d3ee','#a855f7'];
+  for(let i=0;i<22;i++){
+    const p=document.createElement('div');
+    p.className='confetti-piece';
+    p.style.cssText=`left:${Math.random()*100}%;top:-10px;background:${colors[i%colors.length]};opacity:${0.5+Math.random()*0.5};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*1.5}s;transform:rotate(${Math.random()*360}deg);border-radius:${Math.random()>0.5?'50%':'2px'}`;
+    el.appendChild(p);
+  }
+}
+
+function renderWrapped(w){
+  document.getElementById('wrappedYear').textContent=w.year+' Wrapped';
+  document.getElementById('wName').textContent=w._name||'';
+  document.getElementById('wLogin').textContent='@'+(w._login||'');
+  document.getElementById('wAge').textContent=w.age_label||'';
+  document.getElementById('wAvatar').src=w._avatar||'';
+
+  const eventTypeLabels={PushEvent:'Code Pushes',PullRequestEvent:'PRs',IssuesEvent:'Issues',IssueCommentEvent:'Comments',CreateEvent:'Branches/Tags',WatchEvent:'Stars Given',ForkEvent:'Forks'};
+  const topEv=eventTypeLabels[w.top_event_type]||w.top_event_type||'—';
+
+  const stats=[
+    {label:'Commits This Year', value:w.year_commits.toLocaleString(), color:'#22d3ee', icon:'🔥'},
+    {label:'Top Language', value:w.top_language, color:getLC(w.top_language), icon:'💻'},
+    {label:'Longest Streak', value:w.longest_streak+'d', color:'#f59e0b', icon:'⚡'},
+    {label:'New Repos', value:w.new_repos_year, color:'#10b981', icon:'📦'},
+  ];
+  document.getElementById('wrappedGrid').innerHTML=stats.map((s,i)=>`
+    <div class="wrapped-stat bg-white/5 border border-white/10 rounded-2xl p-4" style="animation-delay:${0.1*i}s">
+      <div class="text-2xl mb-1">${s.icon}</div>
+      <div class="font-black text-xl" style="color:${s.color}">${s.value}</div>
+      <div class="font-mono text-xs text-zinc-500 mt-0.5">${s.label}</div>
+    </div>`).join('');
+
+  const highlights=[];
+  if(w.biggest_repo)highlights.push({label:'Biggest Repo',value:w.biggest_repo.name,sub:w.biggest_repo.stars?`★ ${w.biggest_repo.stars}`:'',icon:'🏆',href:w.biggest_repo.url});
+  if(w.best_month.commits>0)highlights.push({label:'Best Month',value:w.best_month.label,sub:`${w.best_month.commits} commits`,icon:'📅'});
+  if(w.pr_merge_rate!=null)highlights.push({label:'PR Merge Rate',value:w.pr_merge_rate+'%',sub:`${w.prs_merged}/${w.prs_opened} merged`,icon:'🔀'});
+  if(w.total_stars>0)highlights.push({label:'Total Stars',value:w.total_stars.toLocaleString(),sub:'across all repos',icon:'⭐'});
+
+  document.getElementById('wrappedHighlights').innerHTML=highlights.slice(0,4).map((h,i)=>{
+    const inner=`<div class="text-lg mb-1">${h.icon}</div><div class="font-bold text-sm text-white">${h.value}</div>${h.sub?`<div class="font-mono text-xs text-zinc-500">${h.sub}</div>`:''}<div class="font-mono text-xs text-zinc-700 mt-1">${h.label}</div>`;
+    const cls='wrapped-stat bg-white/5 border border-white/10 rounded-2xl p-3';
+    return h.href?`<a href="${h.href}" target="_blank" rel="noopener" class="${cls} hover:border-fuchsia-500/30 transition-colors" style="animation-delay:${0.1*i+0.4}s">${inner}</a>`:`<div class="${cls}" style="animation-delay:${0.1*i+0.4}s">${inner}</div>`;
+  }).join('');
+}
+
+function copyBadgeSnippet(){
+  if(!_wrappedUsername)return;
+  const badge=`[![Git-Spectre](https://git-spectre.vercel.app/api/badge/${_wrappedUsername})](https://git-spectre.vercel.app/?u=${_wrappedUsername})`;
+  navigator.clipboard.writeText(badge).then(()=>showToast('Badge snippet copied! Paste into your README.','🏅')).catch(()=>alert(badge));
+}
+// ============================================================
 // SOCIAL GRAPH PANEL
 // ============================================================
 function buildSocialGraph(sg){
@@ -1214,6 +1442,7 @@ function buildSocialGraph(sg){
   avatarRow(sg.fans,'sgFansList');
   avatarRow(sg.following_only,'sgOneWayList');
 }
+
 
 // ============================================================
 // FORK PANEL
@@ -1510,7 +1739,7 @@ function renderDossier(data){
   buildOrgs(orgs);
   buildStreaks(streaks);
   buildHeatmap(heatmap);
-  buildCommunity(community||{prs_opened:0,prs_merged:0,issues_opened:0,issue_comments:0,external_repos:[]});
+  buildCommunity(community||{prs_opened:0,prs_merged:0,issues_opened:0,issue_comments:0,external_repos:[]}, pr_merge_rate??null);
   buildActivityHours(activity_hours);
   buildTagCloud(topics);
   buildLangEvolution(lang_evolution);
@@ -1518,7 +1747,14 @@ function renderDossier(data){
   buildCommitQuality(commit_messages||[]);
   buildForkPanel(stats,fork_details||[]);
   buildSocialGraph(social_graph||null);
+  buildReadmeQuality(readme_quality||null);
   buildStatLists(top_repos,followers_list||[],following_list||[]);
+
+  // GitHub Wrapped data — store globally for modal
+  if(wrapped){
+    _wrappedData={...wrapped,_name:profile.name,_login:profile.login,_avatar:profile.avatar_url};
+    _wrappedUsername=profile.login;
+  }
 
   // Peak coding persona
   const ppEl=document.getElementById('peakPersonaBadge');
@@ -1553,7 +1789,7 @@ function renderDossier(data){
   // Show UI
   document.getElementById('scanOverlay').classList.add('hidden');
   document.getElementById('dossier').classList.remove('hidden');
-  ['exportBtn','exportBtn2','cardBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('hidden');el.classList.add('flex');}});
+  ['exportBtn','exportBtn2','cardBtn','wrappedBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('hidden');el.classList.add('flex');}});
   document.getElementById('heroSection').classList.add('hidden');
   setTimeout(()=>document.getElementById('dossier').scrollIntoView({behavior:'smooth',block:'start'}),100);
   refreshRateLimit();

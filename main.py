@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -34,7 +35,7 @@ logger = logging.getLogger("git-spectre")
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
 # ------------------------------------------------------------
@@ -654,6 +655,115 @@ def _compute_roast(langs: Dict, repos: List[Dict], profile: Dict,
     return " ".join(lines[:2])
 
 
+def _compute_readme_quality(readme: Dict[str, Any]) -> Dict[str, Any]:
+    """Score the user's profile README 0–100 across 6 signals."""
+    if not readme.get("found") or not readme.get("content"):
+        return {"found": False, "score": 0, "signals": {}}
+
+    content: str = readme["content"]
+    lower = content.lower()
+    length = len(content)
+
+    signals: Dict[str, bool] = {
+        "has_badges":     bool(re.search(r"!\[.*?\]\(https?://.*?(badge|shield|img\.shields).*?\)", lower)),
+        "has_gif_or_img": bool(re.search(r"!\[.*?\]\(https?://.*?\.(gif|png|jpg|svg|webp)", lower)),
+        "has_links":      bool(re.search(r"\[.+?\]\(https?://", content)),
+        "is_long":        length >= 300,
+        "has_headers":    bool(re.search(r"^#{1,3} ", content, re.MULTILINE)),
+        "has_code_block": bool(re.search(r"```|`[^`]+`", content)),
+    }
+
+    weights = {"has_badges": 18, "has_gif_or_img": 18, "has_links": 16,
+               "is_long": 18, "has_headers": 16, "has_code_block": 14}
+    score = int(sum(weights[k] for k, v in signals.items() if v))
+    return {"found": True, "score": score, "signals": signals, "html_url": readme.get("html_url", "")}
+
+
+def _compute_wrapped(repos: List[Dict], events: List[Dict],
+                     profile: Dict, streaks: Dict,
+                     langs: Dict, heatmap: Dict) -> Dict[str, Any]:
+    """GitHub Wrapped: year-in-review highlights derived from existing data."""
+    import calendar as _cal
+
+    now = datetime.now(timezone.utc)
+    current_year = str(now.year)
+
+    # Total commits this year (from heatmap keys)
+    year_commits = sum(v for k, v in heatmap.items() if k.startswith(current_year))
+
+    # Best day (most commits)
+    best_day = max(heatmap.items(), key=lambda kv: kv[1]) if heatmap else ("—", 0)
+
+    # Best month by commit count
+    month_counts: Dict[str, int] = defaultdict(int)
+    for ds, cnt in heatmap.items():
+        if ds.startswith(current_year):
+            month_counts[ds[:7]] += cnt
+    best_month_key = max(month_counts, key=month_counts.get) if month_counts else None
+    if best_month_key:
+        mo = int(best_month_key.split("-")[1])
+        best_month = f"{_cal.month_abbr[mo]} {current_year}"
+        best_month_commits = month_counts[best_month_key]
+    else:
+        best_month, best_month_commits = "—", 0
+
+    # Top language
+    top_language = list(langs.keys())[0] if langs else "—"
+
+    # Biggest repo (by stars, own only)
+    own = [r for r in repos if not r.get("fork")]
+    biggest = max(own, key=lambda r: r.get("stargazers_count", 0), default=None)
+
+    # Event type breakdown
+    event_types: Dict[str, int] = defaultdict(int)
+    for e in events:
+        event_types[e.get("type", "Other")] += 1
+    top_event = max(event_types, key=event_types.get) if event_types else "—"
+
+    # PR merge rate
+    prs_opened = sum(1 for e in events if e.get("type") == "PullRequestEvent"
+                     and e.get("payload", {}).get("action") == "opened")
+    prs_merged = sum(1 for e in events if e.get("type") == "PullRequestEvent"
+                     and e.get("payload", {}).get("action") == "closed"
+                     and e.get("payload", {}).get("pull_request", {}).get("merged"))
+    merge_rate = round(prs_merged / prs_opened * 100) if prs_opened else None
+
+    # New repos created this year
+    new_repos_year = sum(1 for r in own if r.get("created_at", "").startswith(current_year))
+
+    # Account age label
+    try:
+        age_years = (now - datetime.fromisoformat(
+            profile.get("created_at", "").replace("Z", "+00:00")
+        )).days / 365
+        age_label = f"{age_years:.1f} years on GitHub"
+    except Exception:
+        age_label = "—"
+
+    return {
+        "year":              current_year,
+        "year_commits":      year_commits,
+        "best_day":          {"date": best_day[0], "commits": best_day[1]},
+        "best_month":        {"label": best_month, "commits": best_month_commits},
+        "top_language":      top_language,
+        "biggest_repo":      {
+            "name":  biggest["name"] if biggest else "—",
+            "stars": biggest.get("stargazers_count", 0) if biggest else 0,
+            "url":   biggest["html_url"] if biggest else "#",
+        } if biggest else None,
+        "top_event_type":    top_event,
+        "prs_opened":        prs_opened,
+        "prs_merged":        prs_merged,
+        "pr_merge_rate":     merge_rate,
+        "longest_streak":    streaks.get("longest", 0),
+        "current_streak":    streaks.get("current", 0),
+        "new_repos_year":    new_repos_year,
+        "total_stars":       sum(r.get("stargazers_count", 0) for r in own),
+        "total_followers":   profile.get("followers", 0),
+        "age_label":         age_label,
+    }
+
+
 def _compute_social_graph(followers_raw: List[Dict], following_raw: List[Dict]) -> Dict[str, Any]:
     """Mutual follows, fans, and one-sided following from fetched lists."""
     fl = {f["login"].lower() for f in followers_raw}
@@ -731,6 +841,7 @@ async def _fetch_contribution_calendar(
 # ------------------------------------------------------------
 # Core analysis (shared by /analyze and /compare)
 # ------------------------------------------------------------
+
 
 async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
     """Full profile analysis. Checks TTL cache first."""
@@ -811,6 +922,12 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         "star_velocity":    _compute_star_velocity(repos, profile),
         "roast":            _compute_roast(lang_bytes, repos, profile, events, streaks_data),
         "social_graph":     _compute_social_graph(followers_raw, following_raw),
+        "pr_merge_rate":    (
+            lambda opened, merged: round(merged / opened * 100) if opened else None
+        )(
+            sum(1 for e in events if e.get("type") == "PullRequestEvent" and e.get("payload", {}).get("action") == "opened"),
+            sum(1 for e in events if e.get("type") == "PullRequestEvent" and e.get("payload", {}).get("action") == "closed" and e.get("payload", {}).get("pull_request", {}).get("merged")),
+        ),
         "orgs": [
             {
                 "login":      o["login"],
@@ -837,8 +954,40 @@ async def _run_analysis(username: str, token: Optional[str]) -> Dict[str, Any]:
         ],
     }
 
+    # README quality — fetch separately (not parallel to avoid extra API hit on cache hits)
+    readme_raw = await _fetch_readme_for_quality(username, headers)
+    result["readme_quality"] = _compute_readme_quality(readme_raw)
+
+    # GitHub Wrapped
+    result["wrapped"] = _compute_wrapped(
+        repos, events, profile, streaks_data,
+        lang_bytes, result["heatmap"],
+    )
+
     _cache_set(cache_key, result)
     return result
+
+
+async def _fetch_readme_for_quality(username: str, headers: Dict) -> Dict[str, Any]:
+    """Lightweight README fetch for quality scoring — reuses the readme endpoint logic."""
+    import base64 as _b64
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+        resp = await client.get(
+            f"{GITHUB_API}/repos/{username}/{username}/readme",
+            headers=headers,
+        )
+        if resp.status_code in (404, 403, 422):
+            return {"found": False, "content": "", "html_url": ""}
+        try:
+            resp.raise_for_status()
+        except Exception:
+            return {"found": False, "content": "", "html_url": ""}
+        data = resp.json()
+        try:
+            content = _b64.b64decode(data.get("content", "")).decode("utf-8", errors="replace")
+        except Exception:
+            content = ""
+        return {"found": bool(content.strip()), "content": content, "html_url": data.get("html_url", "")}
 
 
 # ------------------------------------------------------------
@@ -1018,6 +1167,63 @@ async def get_readme(username: str) -> Dict[str, Any]:
 # ------------------------------------------------------------
 # Dev entry-point
 # ------------------------------------------------------------
+
+@app.get("/api/badge/{username}", include_in_schema=False)
+async def badge_svg(username: str) -> Response:
+    """Return a dynamic shields.io-style SVG badge: Dev Score + Grade."""
+    token = os.getenv("GITHUB_TOKEN")
+    try:
+        data = await _run_analysis(username.strip(), token)
+    except HTTPException:
+        # Return a fallback "not found" badge
+        svg = _make_badge_svg("Git-Spectre", "not found", "#6b7280")
+        return Response(svg, media_type="image/svg+xml",
+                        headers={"Cache-Control": "no-cache"})
+
+    sc  = data["score"]
+    arc = data["archetype"]
+    grade_colors = {
+        "S+": "#f59e0b", "S": "#10b981", "A": "#06b6d4",
+        "B":  "#8b5cf6", "C": "#f97316", "D": "#ef4444", "E": "#6b7280",
+    }
+    color = grade_colors.get(sc["grade"], "#22d3ee")
+    label = f"Score {sc['total']} · {sc['grade']}"
+    svg = _make_badge_svg("Git-Spectre", label, color)
+    return Response(
+        svg, media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=600"},
+    )
+
+
+def _make_badge_svg(left: str, right: str, color: str) -> str:
+    """Minimal shields.io-compatible flat SVG badge."""
+    # Approximate text widths (monospace heuristic)
+    lw = len(left) * 6 + 10
+    rw = len(right) * 6 + 10
+    total = lw + rw
+    lx = lw // 2
+    rx = lw + rw // 2
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="{total}" height="20" role="img" aria-label="{left}: {right}">
+  <title>{left}: {right}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="{total}" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="{lw}" height="20" fill="#555"/>
+    <rect x="{lw}" width="{rw}" height="20" fill="{color}"/>
+    <rect width="{total}" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" text-rendering="geometricPrecision">
+    <text x="{lx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left}</text>
+    <text x="{lx * 10}" y="140" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left}</text>
+    <text x="{rx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right}</text>
+    <text x="{rx * 10}" y="140" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right}</text>
+  </g>
+</svg>"""
+
 
 if __name__ == "__main__":
     import uvicorn
