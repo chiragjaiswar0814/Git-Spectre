@@ -48,11 +48,27 @@ app = FastAPI(
     version="2.0.0",
 )
 
+# Allowed origins: production domain + localhost for dev.
+# Override by setting ALLOWED_ORIGINS=https://yourdomain.com,https://other.com
+# in Vercel's Environment Variables panel.
+_DEFAULT_ORIGINS = [
+    "https://git-spectre.vercel.app",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",   # in case of a future frontend dev server
+]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS: list[str] = (
+    [o.strip() for o in _env_origins.split(",") if o.strip()]
+    if _env_origins
+    else _DEFAULT_ORIGINS
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 GITHUB_API  = "https://api.github.com"
