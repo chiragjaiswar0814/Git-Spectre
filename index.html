@@ -1698,7 +1698,7 @@ async function runScan(){
 // RENDER DOSSIER (v2.1 — all panels)
 // ============================================================
 function renderDossier(data){
-  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list,community,commit_messages,fork_details,lang_repo_counts,peak_hour,star_velocity,roast,social_graph}=data;
+  const{profile,stats,languages,archetype,top_repos,score,heatmap,activity_hours,streaks,topics,lang_evolution,gists,orgs,cached,followers_list,following_list,community,commit_messages,fork_details,lang_repo_counts,peak_hour,star_velocity,roast,social_graph,pr_merge_rate,readme_quality,wrapped}=data;
 
   // Cached badge
   const cb=document.getElementById('cachedBadge');
