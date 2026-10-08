@@ -23,4 +23,12 @@ env/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumb.db
+
+# Developer scripts (moved to scripts/ — ignore if regenerated in root)
+gen_html.py
+fix_js.py
+
+# pytest cache
+.pytest_cache/
+tests/__pycache__/

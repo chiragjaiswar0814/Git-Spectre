@@ -20,6 +20,7 @@ New in v2:
 from __future__ import annotations
 
 import asyncio
+import html as _html
 import logging
 import os
 import re
@@ -33,19 +34,48 @@ BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger("git-spectre")
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi import Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, Response
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from pydantic import BaseModel, Field, field_validator
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 # ------------------------------------------------------------
 # App bootstrap
 # ------------------------------------------------------------
 
+def _get_client_ip(request: Request) -> str:
+    """Read real client IP from X-Forwarded-For (set by Vercel / reverse proxies).
+    Falls back to the socket address when the header is absent (local dev)."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+# Rate limiter — keyed by real client IP (respects X-Forwarded-For behind Vercel)
+limiter = Limiter(key_func=_get_client_ip)
+
 app = FastAPI(
     title="Git-Spectre API",
     description="Ultra-premium cinematic GitHub Deep-Profiler v2",
     version="2.0.0",
+    # Disable public API docs in production
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(
+    RateLimitExceeded,
+    lambda req, exc: JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded. Please slow down and try again shortly."},
+    ),
 )
 
 # Allowed origins: production domain + localhost for dev.
@@ -70,6 +100,18 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Attach standard security headers to every response."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
 
 GITHUB_API  = "https://api.github.com"
 TIMEOUT     = httpx.Timeout(28.0, connect=10.0)
@@ -100,20 +142,74 @@ def _cache_set(key: str, value: Any) -> None:
 # Schemas
 # ------------------------------------------------------------
 
-class AnalyzeRequest(BaseModel):
-    username: str
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$")
+# Matches all current GitHub PAT formats: ghp_, gho_, ghu_, ghr_, ghs_
+_TOKEN_RE    = re.compile(r"^gh[pousr]_[A-Za-z0-9_]{36,255}$")
+
+
+def _validate_username(v: str) -> str:
+    v = v.strip()
+    if not v:
+        raise ValueError("Username cannot be empty.")
+    if not _USERNAME_RE.match(v):
+        raise ValueError(
+            "Invalid GitHub username. Use only letters, numbers, and hyphens (1–39 chars)."
+        )
+    return v
+
+
+def _validate_token(v: Optional[str]) -> Optional[str]:
+    """Validate GitHub PAT format — rejects obviously invalid or injected strings."""
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not _TOKEN_RE.match(v):
+        raise ValueError(
+            "Invalid GitHub token format. Provide a valid Personal Access Token "
+            "(ghp_…, gho_…, ghu_…, ghr_…, or ghs_…)."
+        )
+    return v
+
+
+class _WithToken(BaseModel):
+    """Mixin that adds a validated, optional github_token field to all request models."""
+
     github_token: Optional[str] = None
 
+    @field_validator("github_token")
+    @classmethod
+    def validate_token(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_token(v)
 
-class CompareRequest(BaseModel):
+
+class AnalyzeRequest(_WithToken):
+    username: str
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        return _validate_username(v)
+
+
+class CompareRequest(_WithToken):
     username_a: str
     username_b: str
-    github_token: Optional[str] = None
+
+    @field_validator("username_a", "username_b")
+    @classmethod
+    def validate_usernames(cls, v: str) -> str:
+        return _validate_username(v)
 
 
-class BatchRequest(BaseModel):
-    usernames: List[str]
-    github_token: Optional[str] = None
+class BatchRequest(_WithToken):
+    usernames: List[str] = Field(..., min_length=1, max_length=10)
+
+    @field_validator("usernames", mode="before")
+    @classmethod
+    def validate_usernames(cls, v: List[str]) -> List[str]:
+        return [_validate_username(u) for u in v]
 
 
 # ------------------------------------------------------------
@@ -1015,36 +1111,32 @@ async def serve_spa() -> FileResponse:
     return FileResponse(str(BASE_DIR / "index.html"))
 
 
+@limiter.limit("15/minute")
 @app.post("/api/analyze")
-async def analyze(payload: AnalyzeRequest) -> Dict[str, Any]:
-    username = payload.username.strip()
-    if not username:
-        raise HTTPException(422, "Username cannot be empty.")
+async def analyze(request: Request, payload: AnalyzeRequest) -> Dict[str, Any]:
     token = payload.github_token or os.getenv("GITHUB_TOKEN")
-    return await _run_analysis(username, token)
+    return await _run_analysis(payload.username, token)
 
 
+@limiter.limit("8/minute")
 @app.post("/api/compare")
-async def compare(payload: CompareRequest) -> Dict[str, Any]:
-    a = payload.username_a.strip()
-    b = payload.username_b.strip()
-    if not a or not b:
-        raise HTTPException(422, "Both usernames are required.")
+async def compare(request: Request, payload: CompareRequest) -> Dict[str, Any]:
     token = payload.github_token or os.getenv("GITHUB_TOKEN")
     try:
         result_a, result_b = await asyncio.gather(
-            _run_analysis(a, token),
-            _run_analysis(b, token),
+            _run_analysis(payload.username_a, token),
+            _run_analysis(payload.username_b, token),
         )
     except HTTPException:
         raise
     return {"user_a": result_a, "user_b": result_b}
 
 
+@limiter.limit("4/minute")
 @app.post("/api/batch")
-async def batch_analyze(payload: BatchRequest) -> List[Dict[str, Any]]:
+async def batch_analyze(request: Request, payload: BatchRequest) -> List[Dict[str, Any]]:
     """Analyze up to 10 profiles concurrently and return a sorted leaderboard."""
-    usernames = [u.strip() for u in payload.usernames[:10] if u.strip()]
+    usernames = payload.usernames  # already validated & stripped by Pydantic
     if not usernames:
         raise HTTPException(422, "At least one username required.")
     token = payload.github_token or os.getenv("GITHUB_TOKEN")
@@ -1076,14 +1168,20 @@ async def batch_analyze(payload: BatchRequest) -> List[Dict[str, Any]]:
 
 
 @app.get("/embed/{username}", include_in_schema=False)
-async def embed_profile(username: str) -> HTMLResponse:
+async def embed_profile(
+    username: str = FPath(
+        ...,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$",
+        description="GitHub username (1\u201339 chars, alphanumeric and hyphens)",
+    ),
+) -> HTMLResponse:
     """Minimal embeddable profile card for portfolios and READMEs."""
     token = os.getenv("GITHUB_TOKEN")
     try:
         data = await _run_analysis(username.strip(), token)
     except HTTPException as exc:
         return HTMLResponse(
-            f"<p style='font-family:monospace;color:#ef4444;padding:16px'>Error: {exc.detail}</p>",
+            f"<p style='font-family:monospace;color:#ef4444;padding:16px'>Error: {_html.escape(str(exc.detail))}</p>",
             status_code=exc.status_code,
         )
 
@@ -1097,42 +1195,53 @@ async def embed_profile(username: str) -> HTMLResponse:
         "B":  "#8b5cf6", "C": "#f97316", "D": "#ef4444", "E": "#6b7280",
     }
     sc_col = grade_colors.get(sc["grade"], "#22d3ee")
+
+    # Escape all GitHub-sourced strings before injecting into HTML
+    p_name    = _html.escape(str(p.get("name") or p.get("login", "")))
+    p_login   = _html.escape(str(p.get("login", "")))
+    p_avatar  = _html.escape(str(p.get("avatar_url", "")))
+    arc_label = _html.escape(str(arc.get("label", "")))
+    arc_glow  = _html.escape(str(arc.get("glow", "#22d3ee")))
+    sc_total  = int(sc.get("total", 0))       # always int, safe to interpolate directly
+    sc_grade  = _html.escape(str(sc.get("grade", "E")))
+    sc_col_e  = _html.escape(sc_col)
+
     lang_html = "".join(
         f'<div style="margin-bottom:6px">'
         f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;'
-        f'font-family:monospace;color:#a1a1aa"><span>{lg}</span><span>{round(v/tot*100)}%</span></div>'
+        f'font-family:monospace;color:#a1a1aa"><span>{_html.escape(str(lg))}</span><span>{round(v/tot*100)}%</span></div>'
         f'<div style="background:rgba(255,255,255,0.08);border-radius:3px;height:3px">'
         f'<div style="width:{round(v/tot*100)}%;background:#22d3ee;border-radius:3px;height:3px">'
         f'</div></div></div>'
         for lg, v in langs
     )
-    html = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+    card_html = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:'Inter',sans-serif;background:#09090b;color:#e4e4e7;padding:20px;border-radius:12px;border:1px solid rgba(34,211,238,.15)}}</style>
 </head><body>
 <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-  <img src="{p['avatar_url']}" style="width:56px;height:56px;border-radius:12px;border:2px solid rgba(34,211,238,.3)">
+  <img src="{p_avatar}" style="width:56px;height:56px;border-radius:12px;border:2px solid rgba(34,211,238,.3)">
   <div style="flex:1;min-width:0">
-    <div style="font-weight:900;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{p['name']}</div>
-    <div style="color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:12px">@{p['login']}</div>
-    <span style="background:{arc['glow']}22;border:1px solid {arc['glow']}55;color:{arc['glow']};
+    <div style="font-weight:900;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{p_name}</div>
+    <div style="color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:12px">@{p_login}</div>
+    <span style="background:{arc_glow}22;border:1px solid {arc_glow}55;color:{arc_glow};
       font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
-      padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">{arc['label']}</span>
+      padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">{arc_label}</span>
   </div>
   <div style="text-align:center;flex-shrink:0">
-    <div style="font-size:26px;font-weight:900;color:{sc_col}">{sc['total']}</div>
+    <div style="font-size:26px;font-weight:900;color:{sc_col_e}">{sc_total}</div>
     <div style="font-size:9px;color:#52525b;font-family:'JetBrains Mono',monospace">/1000</div>
-    <div style="font-size:14px;font-weight:900;color:{sc_col}">{sc['grade']}</div>
+    <div style="font-size:14px;font-weight:900;color:{sc_col_e}">{sc_grade}</div>
   </div>
 </div>
 {lang_html}
 <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);
   text-align:center;font-size:9px;color:#3f3f46;font-family:'JetBrains Mono',monospace;letter-spacing:.1em">
-  <a href="https://git-spectre.vercel.app/?u={p['login']}" target="_blank"
+  <a href="https://git-spectre.vercel.app/?u={p_login}" target="_blank"
      style="color:#22d3ee44;text-decoration:none">GIT-SPECTRE</a>
 </div>
 </body></html>"""
-    return HTMLResponse(html)
+    return HTMLResponse(card_html)
 
 
 @app.get("/api/rate-limit")
@@ -1152,7 +1261,13 @@ async def rate_limit_endpoint() -> Dict[str, Any]:
 
 
 @app.get("/api/readme/{username}")
-async def get_readme(username: str) -> Dict[str, Any]:
+async def get_readme(
+    username: str = FPath(
+        ...,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$",
+        description="GitHub username",
+    ),
+) -> Dict[str, Any]:
     """Fetch the user's profile README from their username/username repo."""
     import base64 as _b64
     token   = os.getenv("GITHUB_TOKEN")
@@ -1180,12 +1295,24 @@ async def get_readme(username: str) -> Dict[str, Any]:
         }
 
 
+@app.get("/health", include_in_schema=False)
+async def health_check() -> Dict[str, str]:
+    """Liveness probe for uptime monitors."""
+    return {"status": "ok", "version": "2.2"}
+
+
 # ------------------------------------------------------------
 # Dev entry-point
 # ------------------------------------------------------------
 
 @app.get("/api/badge/{username}", include_in_schema=False)
-async def badge_svg(username: str) -> Response:
+async def badge_svg(
+    username: str = FPath(
+        ...,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$",
+        description="GitHub username",
+    ),
+) -> Response:
     """Return a dynamic shields.io-style SVG badge: Dev Score + Grade."""
     token = os.getenv("GITHUB_TOKEN")
     try:
@@ -1213,6 +1340,10 @@ async def badge_svg(username: str) -> Response:
 
 def _make_badge_svg(left: str, right: str, color: str) -> str:
     """Minimal shields.io-compatible flat SVG badge."""
+    # Escape all values injected into SVG/XML content or attributes
+    left_e  = _html.escape(left,  quote=True)
+    right_e = _html.escape(right, quote=True)
+    color_e = _html.escape(color, quote=True)
     # Approximate text widths (monospace heuristic)
     lw = len(left) * 6 + 10
     rw = len(right) * 6 + 10
@@ -1220,8 +1351,8 @@ def _make_badge_svg(left: str, right: str, color: str) -> str:
     lx = lw // 2
     rx = lw + rw // 2
     return f"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-     width="{total}" height="20" role="img" aria-label="{left}: {right}">
-  <title>{left}: {right}</title>
+     width="{total}" height="20" role="img" aria-label="{left_e}: {right_e}">
+  <title>{left_e}: {right_e}</title>
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -1229,14 +1360,14 @@ def _make_badge_svg(left: str, right: str, color: str) -> str:
   <clipPath id="r"><rect width="{total}" height="20" rx="3" fill="#fff"/></clipPath>
   <g clip-path="url(#r)">
     <rect width="{lw}" height="20" fill="#555"/>
-    <rect x="{lw}" width="{rw}" height="20" fill="{color}"/>
+    <rect x="{lw}" width="{rw}" height="20" fill="{color_e}"/>
     <rect width="{total}" height="20" fill="url(#s)"/>
   </g>
   <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="110" text-rendering="geometricPrecision">
-    <text x="{lx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left}</text>
-    <text x="{lx * 10}" y="140" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left}</text>
-    <text x="{rx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right}</text>
-    <text x="{rx * 10}" y="140" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right}</text>
+    <text x="{lx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left_e}</text>
+    <text x="{lx * 10}" y="140" transform="scale(.1)" textLength="{(lw - 10) * 10}" lengthAdjust="spacing">{left_e}</text>
+    <text x="{rx * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right_e}</text>
+    <text x="{rx * 10}" y="140" transform="scale(.1)" textLength="{(rw - 10) * 10}" lengthAdjust="spacing">{right_e}</text>
   </g>
 </svg>"""
 
