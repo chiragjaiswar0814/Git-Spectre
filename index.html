@@ -72,7 +72,19 @@
     .tag-chip { transition:all .2s ease; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     .fade-up { animation:fadeUp .5s ease forwards; }
-    #exportBtn { position:fixed;bottom:2rem;right:2rem;z-index:30; }
+    #exportBtn { position:fixed;bottom:1rem;right:1rem;z-index:30; }
+    @media (min-width:640px) { #exportBtn { bottom:2rem;right:2rem; } }
+    /* Mobile: touch-friendly scrollable areas */
+    .touch-scroll { -webkit-overflow-scrolling:touch;overflow-x:auto; }
+    /* Mobile: search bar stacks button below input */
+    @media (max-width:479px) {
+      #searchInput { font-size:0.9rem;padding-right:1rem;padding-bottom:4rem; }
+      #scanBtn { position:absolute;bottom:0.5rem;right:0.5rem;left:0.5rem;width:auto;top:auto;transform:none; }
+    }
+    /* Mobile: dossier grid clamps */
+    @media (max-width:639px) {
+      #dossier { padding-left:0.75rem;padding-right:0.75rem; }
+    }
 
     /* ── History dropdown ── */
     .history-item:hover { background:rgba(34,211,238,.08); }
@@ -243,8 +255,8 @@
 <!-- =========================================================
      COMPARE MODAL
      ========================================================= -->
-<div id="compareModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-  <div class="glass grad-border w-full max-w-lg p-6 rounded-2xl">
+<div id="compareModal" class="fixed inset-0 z-50 hidden items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
+  <div class="glass grad-border w-full max-w-lg p-4 sm:p-6 rounded-2xl" style="max-height:92vh;overflow-y:auto">
     <div class="flex items-center justify-between mb-5">
       <div>
         <h2 class="font-black text-lg">DUAL TARGET SCAN</h2>
@@ -254,15 +266,15 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="grid grid-cols-2 gap-3 mb-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
       <div>
         <label class="block font-mono text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Target Alpha</label>
-        <input id="compareInputA" type="text" placeholder="torvalds or github.com/torvalds"
+        <input id="compareInputA" type="text" placeholder="torvalds"
           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-cyan-500/50 transition-colors" />
       </div>
       <div>
         <label class="block font-mono text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Target Beta</label>
-        <input id="compareInputB" type="text" placeholder="gvanrossum or github.com/gvanrossum"
+        <input id="compareInputB" type="text" placeholder="gvanrossum"
           class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-cyan-500/50 transition-colors" />
       </div>
     </div>
@@ -275,8 +287,8 @@
 <!-- =========================================================
      GITHUB WRAPPED MODAL
      ========================================================= -->
-<div id="wrappedModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-  <div class="w-full max-w-lg relative">
+<div id="wrappedModal" class="fixed inset-0 z-50 hidden items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+  <div class="w-full max-w-lg relative my-auto">
     <!-- Confetti container -->
     <div id="wrappedConfetti" class="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl"></div>
 
@@ -334,8 +346,8 @@
 <!-- =========================================================
      BATCH SCREENER MODAL
      ========================================================= -->
-<div id="batchModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-  <div class="glass grad-border w-full max-w-2xl p-6 rounded-2xl" style="max-height:90vh;display:flex;flex-direction:column">
+<div id="batchModal" class="fixed inset-0 z-50 hidden items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm">
+  <div class="glass grad-border w-full max-w-2xl p-4 sm:p-6 rounded-2xl" style="max-height:92vh;display:flex;flex-direction:column">
     <div class="flex items-center justify-between mb-5 flex-shrink-0">
       <div>
         <h2 class="font-black text-lg">BATCH SCREENER</h2>
@@ -359,7 +371,7 @@
      HERO
      ========================================================= -->
 <main class="relative z-10">
-<section id="heroSection" class="flex flex-col items-center justify-center min-h-[calc(100vh-57px)] px-4 text-center relative">
+<section id="heroSection" class="flex flex-col items-center justify-center min-h-[calc(100vh-57px)] px-4 sm:px-6 text-center relative">
   <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20"
        style="background-image:linear-gradient(rgba(34,211,238,.15) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.15) 1px,transparent 1px);background-size:60px 60px;"></div>
 
@@ -368,13 +380,13 @@
     INTELLIGENCE SYSTEM v2.1 ONLINE
   </div>
 
-  <h1 class="text-5xl md:text-7xl font-black tracking-tighter mb-4 leading-none">
+  <h1 class="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 leading-none">
     <span class="bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">PROFILE</span><br/>
     <span class="bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-500 bg-clip-text text-transparent neon-cyan">SPECTRE</span>
   </h1>
-  <p class="text-zinc-400 max-w-lg mb-10 text-base leading-relaxed">
+  <p class="text-zinc-400 max-w-lg mb-8 sm:mb-10 text-sm sm:text-base leading-relaxed px-2">
     Uncover developer archetypes. Map language DNA. Extract repository intelligence.<br/>
-    <span class="text-zinc-500 text-sm font-mono">Heatmaps · Commit Quality · PR Activity · Compare · Export</span>
+    <span class="text-zinc-500 text-xs sm:text-sm font-mono">Heatmaps · Commit Quality · PR Activity · Compare · Export</span>
   </p>
 
   <!-- Search + history -->
@@ -385,13 +397,17 @@
       </svg>
     </div>
     <input id="searchInput" type="text"
-      placeholder="Username or https://github.com/username"
-      class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-36 py-5 text-lg font-mono text-zinc-100 placeholder-zinc-600 outline-none transition-all duration-300 focus:border-cyan-500/50"
+      placeholder="Username or GitHub URL"
+      class="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 sm:pr-36 py-4 sm:py-5 text-base sm:text-lg font-mono text-zinc-100 placeholder-zinc-600 outline-none transition-all duration-300 focus:border-cyan-500/50"
       onkeydown="if(event.key==='Enter') runScan()"
       onfocus="showHistory()"
       onblur="setTimeout(hideHistory,200)" />
     <button id="scanBtn" onclick="runScan()"
-      class="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-sm tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
+      class="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-sm tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
+      SCAN
+    </button>
+    <button onclick="runScan()"
+      class="sm:hidden mt-3 w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 font-bold text-sm tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
       SCAN
     </button>
     <!-- History dropdown -->
@@ -444,9 +460,9 @@
   </div>
 
   <!-- 1. PROFILE HEADER -->
-  <div id="headerCard" class="glass grad-border rounded-2xl p-6 mb-6 relative overflow-hidden">
+  <div id="headerCard" class="glass grad-border rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 relative overflow-hidden">
 
-    <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+    <div class="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
       <div class="relative shrink-0">
         <img id="avatar" src="" alt="Avatar" class="w-28 h-28 rounded-2xl border-2 border-cyan-500/30 avatar-ring object-cover" />
         <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-green-400/20 border border-green-400/40 flex items-center justify-center">
@@ -489,8 +505,8 @@
   </div>
 
   <!-- 2. SCORE + STATS ROW -->
-  <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-    <div class="col-span-2 glass grad-border rounded-2xl p-5 flex flex-col items-center justify-center">
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-3 sm:gap-4 mb-6">
+    <div class="col-span-2 glass grad-border rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center">
       <div id="scoreRingContainer"></div>
     </div>
     <div class="glass grad-border rounded-xl p-4 flex flex-col">
@@ -546,7 +562,7 @@
         </div>
       </div>
     </div>
-    <div id="heatmapGrid" class="overflow-x-auto"></div>
+    <div id="heatmapGrid" class="overflow-x-auto touch-scroll"></div>
   </div>
 
   <!-- 3.5 COMMUNITY ACTIVITY -->
@@ -609,7 +625,7 @@
         <span id="chronotypeBadge" class="font-mono text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-zinc-400"></span>
       </div>
       <p class="text-xs font-mono text-zinc-600 mb-4">Events by day × hour (UTC)</p>
-      <div id="activityHoursGrid"></div>
+      <div id="activityHoursGrid" class="overflow-x-auto touch-scroll"></div>
     </div>
     <div id="langEvoSection" class="glass grad-border rounded-2xl p-6">
       <h2 class="font-bold text-sm tracking-widest uppercase text-zinc-300 mb-1">Stack Evolution</h2>

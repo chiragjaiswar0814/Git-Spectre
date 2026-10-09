@@ -97,6 +97,7 @@ ALLOWED_ORIGINS: list[str] = (
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
@@ -143,8 +144,8 @@ def _cache_set(key: str, value: Any) -> None:
 # ------------------------------------------------------------
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$")
-# Matches all current GitHub PAT formats: ghp_, gho_, ghu_, ghr_, ghs_
-_TOKEN_RE    = re.compile(r"^gh[pousr]_[A-Za-z0-9_]{36,255}$")
+# Matches classic GitHub PAT formats (ghp_, gho_, ghu_, ghr_, ghs_) and fine-grained PATs (github_pat_)
+_TOKEN_RE    = re.compile(r"^(?:gh[pousr]_[A-Za-z0-9_]{36,255}|github_pat_[A-Za-z0-9_]{22,255})$")
 
 
 def _validate_username(v: str) -> str:

@@ -84,6 +84,10 @@ class TestValidateToken:
         token = "gho_" + "B" * 36
         assert _validate_token(token) == token
 
+    def test_valid_github_pat_token(self):
+        token = "github_pat_" + "11ABCD" + "X" * 30
+        assert _validate_token(token) == token
+
     def test_invalid_format_rejected(self):
         with pytest.raises(ValueError, match="Invalid GitHub token"):
             _validate_token("not_a_real_token")

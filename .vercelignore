@@ -1,0 +1,12 @@
+tests/
+scripts/
+.pytest_cache/
+.git/
+.github/
+.vscode/
+.idea/
+*.md
+LICENSE
+pytest.ini
+requirements-dev.txt
+.env*
