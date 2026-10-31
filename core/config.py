@@ -73,7 +73,7 @@ MAX_RETRIES = 2
 BACKOFF = 0.5  # seconds, doubles each retry
 
 # Application version metadata (Single Source of Truth)
-APP_VERSION = os.getenv("APP_VERSION", "3.1.0")
+APP_VERSION = os.getenv("APP_VERSION", "3.1.1")
 APP_VERSION_SHORT = "v" + ".".join(APP_VERSION.split(".")[:2])
 APP_VERSION_MAJOR = "v" + APP_VERSION.split(".")[0]
 

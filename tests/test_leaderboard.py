@@ -38,6 +38,8 @@ client = TestClient(app)
 def isolated_db(tmp_path, monkeypatch):
     """Use an isolated SQLite test database for each test function."""
     _cache_clear()
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
     test_db = tmp_path / "test_spectre_leaderboard.db"
     monkeypatch.setattr("core.leaderboard._get_db_path", lambda: test_db)
     init_leaderboard_db()
@@ -260,3 +262,36 @@ class TestLeaderboardApiRoutes:
         assert "Rust" in data["languages"]
         assert "Go" in data["languages"]
         assert any(d["language"] == "Rust" and d["count"] >= 1 for d in data["details"])
+
+
+class TestTursoAdapter:
+    """Unit tests for native Turso HTTP adapter types and row mapping."""
+
+    def test_turso_row_access(self):
+        from core.leaderboard import TursoRow
+
+        cols = ["login", "dev_score", "score_tier"]
+        row = TursoRow(cols, ["torvalds", 990, "S"])
+
+        assert row[0] == "torvalds"
+        assert row["login"] == "torvalds"
+        assert row["dev_score"] == 990
+        assert row.get("score_tier") == "S"
+        assert row.get("non_existent", "fallback") == "fallback"
+        assert "login" in row.keys()
+        assert len(row) == 3
+
+    def test_turso_arg_encoding(self):
+        from core.leaderboard import _decode_turso_value, _encode_turso_arg
+
+        assert _encode_turso_arg(None) == {"type": "null"}
+        assert _encode_turso_arg(123) == {"type": "integer", "value": "123"}
+        assert _encode_turso_arg(45.67) == {"type": "float", "value": 45.67}
+        assert _encode_turso_arg("hello") == {"type": "text", "value": "hello"}
+        assert _encode_turso_arg(True) == {"type": "integer", "value": "1"}
+
+        assert _decode_turso_value({"type": "null"}) is None
+        assert _decode_turso_value({"type": "integer", "value": "42"}) == 42
+        assert _decode_turso_value({"type": "float", "value": 3.14}) == 3.14
+        assert _decode_turso_value({"type": "text", "value": "code"}) == "code"
+

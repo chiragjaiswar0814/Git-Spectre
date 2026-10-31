@@ -3,9 +3,23 @@
 All notable changes to Git-Spectre are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.1.1] — 2026-10-28
+
+### Added
+
+- **Turso (LibSQL Cloud) Database Integration (`core/leaderboard.py`)**:
+    - Implemented cloud-native persistence for the Global Developer Leaderboard on serverless hosting platforms (Vercel, AWS Lambda), resolving ephemeral `/tmp` storage resets across container cold starts, multi-instance routing, and page refreshes.
+    - Added high-performance `TursoHTTPConnection`, `TursoCursor`, and `TursoRow` adapters in `core/leaderboard.py`, communicating natively with Turso's official `/v2/pipeline` HTTP API using existing `httpx` client infrastructure with zero extra binary C/Rust compilation requirements.
+    - Automatic dual-mode database resolution: connects securely to Turso cloud when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are configured, while seamlessly preserving local SQLite file fallback (`data/leaderboard.db`) for offline development.
+    - Added environment variable documentation in `.env.example` for `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
+- **Automated Test Suite Expansion (`tests/test_leaderboard.py`)**:
+    - Added unit tests for `TursoRow` mapping, `TursoCursor` iteration, and Turso pipeline type encoding/decoding (`TestTursoAdapter`).
+    - Hardened test isolation in `isolated_db` fixture, ensuring cloud database environment variables never contaminate local unit test suites.
+
 ---
 
 ## [3.1.0] — 2026-10-26
+
 
 ### Added
 

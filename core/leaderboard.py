@@ -13,10 +13,174 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+import httpx
 
 from core.cache import _cache_delete_prefix, _cache_get, _cache_set
 from core.config import BASE_DIR, logger
+
+
+class TursoRow:
+    """Row object providing dict-style and index-style access compatible with sqlite3.Row."""
+
+    def __init__(self, cols: List[str], values: List[Any]):
+        self._cols = cols
+        self._values = values
+        self._map = {col.lower(): i for i, col in enumerate(cols)}
+
+    def __getitem__(self, key: Any) -> Any:
+        if isinstance(key, int):
+            return self._values[key]
+        if isinstance(key, str):
+            idx = self._map.get(key.lower())
+            if idx is not None:
+                return self._values[idx]
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        idx = self._map.get(key.lower())
+        if idx is not None:
+            return self._values[idx]
+        return default
+
+    def keys(self) -> List[str]:
+        return list(self._cols)
+
+    def values(self) -> List[Any]:
+        return list(self._values)
+
+    def items(self) -> List[Tuple[str, Any]]:
+        return list(zip(self._cols, self._values))
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __repr__(self) -> str:
+        return f"<TursoRow {dict(self.items())}>"
+
+
+class TursoCursor:
+    """Cursor adapter wrapping Turso query results to match sqlite3 cursor interface."""
+
+    def __init__(self, cols: List[str], rows: List[TursoRow], rowcount: int = 0):
+        self._cols = cols
+        self._rows = rows
+        self.rowcount = rowcount
+        self._iter = iter(rows)
+
+    def fetchone(self) -> Optional[TursoRow]:
+        return next(self._iter, None)
+
+    def fetchall(self) -> List[TursoRow]:
+        return list(self._rows)
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+def _encode_turso_arg(v: Any) -> Dict[str, Any]:
+    if v is None:
+        return {"type": "null"}
+    if isinstance(v, bool):
+        return {"type": "integer", "value": "1" if v else "0"}
+    if isinstance(v, int):
+        return {"type": "integer", "value": str(v)}
+    if isinstance(v, float):
+        return {"type": "float", "value": v}
+    return {"type": "text", "value": str(v)}
+
+
+def _decode_turso_value(cell: Dict[str, Any]) -> Any:
+    t = cell.get("type")
+    if t == "null":
+        return None
+    if t == "integer":
+        val = cell.get("value", 0)
+        return int(val) if val is not None else 0
+    if t == "float":
+        val = cell.get("value", 0.0)
+        return float(val) if val is not None else 0.0
+    return cell.get("value", "")
+
+
+class TursoHTTPConnection:
+    """Connection adapter communicating with Turso Cloud via its official /v2/pipeline HTTP API."""
+
+    def __init__(self, url: str, token: str):
+        endpoint = url.strip().replace("libsql://", "https://").rstrip("/")
+        if not endpoint.endswith("/v2/pipeline"):
+            endpoint = f"{endpoint}/v2/pipeline"
+        self._url = endpoint
+        self._token = token.strip()
+        self._client = httpx.Client(timeout=10.0)
+
+    def __enter__(self) -> "TursoHTTPConnection":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        try:
+            self._client.close()
+        except Exception:
+            pass
+
+    def execute(self, sql: str, params: Any = ()) -> TursoCursor:
+        p_list = list(params) if isinstance(params, (list, tuple)) else ([] if params is None else [params])
+        args = [_encode_turso_arg(p) for p in p_list]
+        stmt: Dict[str, Any] = {"sql": sql}
+        if args:
+            stmt["args"] = args
+
+        resp = self._client.post(
+            self._url,
+            headers={"Authorization": f"Bearer {self._token}"},
+            json={"requests": [{"type": "execute", "stmt": stmt}, {"type": "close"}]},
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Turso HTTP {resp.status_code}: {resp.text}")
+
+        data = resp.json()
+        results = data.get("results", [])
+        if not results:
+            return TursoCursor([], [], 0)
+
+        first = results[0]
+        if first.get("type") == "error":
+            raise RuntimeError(f"Turso query error: {first.get('error')}")
+
+        res = first.get("response", {}).get("result", {})
+        col_names = [c["name"] for c in res.get("cols", [])]
+        raw_rows = res.get("rows", [])
+        affected = res.get("affected_row_count", 0)
+
+        rows: List[TursoRow] = []
+        for raw_row in raw_rows:
+            decoded = [_decode_turso_value(cell) for cell in raw_row]
+            rows.append(TursoRow(col_names, decoded))
+
+        return TursoCursor(col_names, rows, rowcount=affected)
+
+    def executescript(self, script: str) -> None:
+        stmts = [s.strip() for s in script.split(";") if s.strip()]
+        if not stmts:
+            return
+        requests = [{"type": "execute", "stmt": {"sql": s}} for s in stmts]
+        requests.append({"type": "close"})
+
+        resp = self._client.post(
+            self._url,
+            headers={"Authorization": f"Bearer {self._token}"},
+            json={"requests": requests},
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Turso HTTP {resp.status_code}: {resp.text}")
+
+    def commit(self) -> None:
+        pass
+
 
 # Database path resolution (supports local dev & Vercel serverless /tmp)
 def _get_db_path() -> Path:
@@ -32,8 +196,21 @@ def _get_db_path() -> Path:
         return Path("/tmp/spectre_leaderboard.db")
 
 
-def _get_connection() -> sqlite3.Connection:
-    """Create a SQLite connection configured with WAL mode and row factory."""
+def _get_connection() -> Any:
+    """
+    Create a database connection:
+    - If TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are configured, connects to Turso LibSQL Cloud.
+    - Otherwise, falls back to local SQLite configured with WAL mode.
+    """
+    turso_url = os.environ.get("TURSO_DATABASE_URL")
+    turso_token = os.environ.get("TURSO_AUTH_TOKEN")
+
+    if turso_url and turso_token:
+        try:
+            return TursoHTTPConnection(turso_url, turso_token)
+        except Exception as e:
+            logger.error("Failed to initialize Turso cloud connection: %s. Falling back to local SQLite.", e)
+
     db_path = _get_db_path()
     conn = sqlite3.connect(str(db_path), timeout=10.0)
     conn.row_factory = sqlite3.Row
