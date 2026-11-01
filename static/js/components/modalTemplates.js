@@ -4,14 +4,14 @@
  */
 
 export function mountModalTemplates() {
-  if (document.getElementById('vaultModal')) return;
+	if (document.getElementById("vaultModal")) return;
 
-  const container = document.createElement('div');
-  container.id = 'modalsContainer';
-  container.innerHTML = `
+	const container = document.createElement("div");
+	container.id = "modalsContainer";
+	container.innerHTML = `
     <!-- API Vault Modal -->
-    <div id="vaultModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div class="relative w-full max-w-md rounded-2xl border border-line bg-surface shadow-2xl p-6">
+    <div id="vaultModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div class="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl p-5 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div class="flex items-start justify-between border-b border-line pb-4 mb-5">
           <div>
             <h2 class="font-mono text-sm font-semibold tracking-wider text-ink uppercase">API Vault</h2>
@@ -36,15 +36,15 @@ export function mountModalTemplates() {
         <p id="vaultError" class="text-xs text-danger font-mono mb-2"></p>
         <p class="text-[12px] text-muted leading-relaxed mb-5">Stored strictly in your browser. Bumps the API limit from 60 to 5,000 requests/hour.</p>
         <div class="flex gap-3">
-          <button type="button" id="vaultSaveBtn" class="flex-1 py-2.5 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 transition-all">LOCK IN TOKEN</button>
-          <button type="button" id="vaultPurgeBtn" class="px-4 py-2.5 rounded-xl border border-danger/40 font-mono text-xs text-danger hover:bg-danger/10 transition-colors">PURGE</button>
+          <button type="button" id="vaultSaveBtn" class="flex-1 py-2.5 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 active:scale-95 transition-all">LOCK IN TOKEN</button>
+          <button type="button" id="vaultPurgeBtn" class="px-4 py-2.5 rounded-xl border border-danger/40 font-mono text-xs text-danger hover:bg-danger/10 active:scale-95 transition-colors">PURGE</button>
         </div>
       </div>
     </div>
 
     <!-- Compare Modal -->
-    <div id="compareModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div class="relative w-full max-w-lg rounded-2xl border border-line bg-surface shadow-2xl p-6">
+    <div id="compareModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div class="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl p-5 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div class="flex items-start justify-between border-b border-line pb-4 mb-5">
           <div>
             <h2 class="font-mono text-sm font-semibold tracking-wider text-ink uppercase">Dual Target Scan</h2>
@@ -62,14 +62,14 @@ export function mountModalTemplates() {
             <input id="compareInputB" type="text" placeholder="e.g. gvanrossum" class="w-full rounded-xl border border-line bg-canvas px-3.5 py-2.5 font-mono text-sm text-ink outline-none focus:border-accent" />
           </div>
           <p id="compareError" class="text-xs text-danger font-mono"></p>
-          <button type="submit" class="w-full py-3 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 transition-all">INITIATE DUAL SCAN</button>
+          <button type="submit" class="w-full py-3 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 active:scale-95 transition-all">INITIATE DUAL SCAN</button>
         </form>
       </div>
     </div>
 
     <!-- Batch Screener Modal -->
-    <div id="batchModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div class="relative w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl rounded-2xl border border-line bg-surface shadow-2xl p-6">
+    <div id="batchModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div class="relative w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl p-5 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div class="flex items-start justify-between border-b border-line pb-4 mb-4">
           <div>
             <h2 class="font-mono text-sm font-semibold tracking-wider text-ink uppercase">Batch Screener</h2>
@@ -81,7 +81,7 @@ export function mountModalTemplates() {
           <form id="batchForm" class="space-y-4">
             <textarea id="batchTextarea" rows="6" placeholder="torvalds&#10;gvanrossum&#10;antirez&#10;https://github.com/karpathy" class="w-full resize-none rounded-xl border border-line bg-canvas px-3.5 py-3 font-mono text-sm text-ink outline-none focus:border-accent"></textarea>
             <p id="batchError" class="text-xs text-danger font-mono"></p>
-            <button type="submit" id="batchRunBtn" class="w-full py-3 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 transition-all">INITIATE BATCH SCAN</button>
+            <button type="submit" id="batchRunBtn" class="w-full py-3 rounded-xl bg-lime font-mono text-xs font-bold text-onlime hover:brightness-105 active:scale-95 transition-all">INITIATE BATCH SCAN</button>
           </form>
         </div>
         <div id="batchResultsView" class="hidden">
@@ -110,54 +110,53 @@ export function mountModalTemplates() {
     </div>
 
     <!-- GitHub Wrapped Modal -->
-    <div id="wrappedModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div class="relative w-full max-w-2xl overflow-hidden rounded-3xl p-8 sm:p-10 text-white shadow-2xl" style="background: linear-gradient(140deg, #2a1572 0%, #5b3be8 45%, #8b6cff 70%, #c6f432 130%);">
+    <div id="wrappedModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+      <div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-5 sm:p-10 text-white shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style="background: linear-gradient(140deg, #2a1572 0%, #5b3be8 45%, #8b6cff 70%, #c6f432 130%);">
         <div id="wrappedConfetti" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
-        <button type="button" data-close-modal="wrappedModal" class="absolute right-5 top-5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">×</button>
+        <button type="button" data-close-modal="wrappedModal" class="absolute right-4 top-4 sm:right-5 sm:top-5 z-20 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all">×</button>
         <div class="relative z-10">
           <div class="flex items-center gap-3">
             <img id="wrappedAvatar" src="" alt="" class="h-10 w-10 rounded-full ring-2 ring-white/40 object-cover" />
             <span id="wrappedLogin" class="font-mono text-xs tracking-widest text-white/80"></span>
           </div>
-          <h2 class="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl leading-tight">Your Year,<br />Unwrapped.</h2>
-          <div class="mt-8 grid gap-3 sm:grid-cols-4">
-            <div class="rounded-2xl bg-lime p-5 text-onlime flex flex-col justify-between sm:col-span-2 sm:row-span-2">
+          <h2 class="mt-4 sm:mt-5 text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">Your Year,<br />Unwrapped.</h2>
+          <div class="mt-6 sm:mt-8 grid gap-3 sm:grid-cols-4">
+            <div class="rounded-2xl bg-lime p-4 sm:p-5 text-onlime flex flex-col justify-between sm:col-span-2 sm:row-span-2">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-wider opacity-75">Contributions This Year</p>
-                <p id="wrappedCommits" class="mt-2 font-mono text-5xl font-black tabular-nums">0</p>
+                <p id="wrappedCommits" class="mt-2 font-mono text-4xl sm:text-5xl font-black tabular-nums">0</p>
               </div>
-              <div class="mt-4">
+              <div class="mt-3 sm:mt-4">
                 <p class="text-xs font-semibold uppercase tracking-wider opacity-75">Biggest Repository</p>
-                <p id="wrappedBiggestRepo" class="font-mono text-lg font-bold truncate">—</p>
+                <p id="wrappedBiggestRepo" class="font-mono text-base sm:text-lg font-bold truncate">—</p>
               </div>
             </div>
             <div id="wrappedTilesContainer" class="contents"></div>
           </div>
-          <div class="mt-8 flex items-center justify-between border-t border-white/15 pt-4">
+          <div class="mt-6 sm:mt-8 flex items-center justify-between border-t border-white/15 pt-4">
             <span class="font-mono text-[11px] tracking-widest text-white/70">GIT-SPECTRE // 2026</span>
-            <button type="button" id="wrappedShareBtn" class="rounded-full bg-white px-5 py-2 font-mono text-xs font-bold text-[#2A1572] hover:bg-white/90 transition-all">Share Card</button>
+            <button type="button" id="wrappedShareBtn" class="rounded-full bg-white px-5 py-2 font-mono text-xs font-bold text-[#2A1572] hover:bg-white/90 active:scale-95 transition-all">Share Card</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- GitHub Profile Badge Studio Modal -->
-    <div id="badgeModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div class="relative w-full max-w-2xl rounded-2xl border border-line bg-surface shadow-2xl p-6">
+    <div id="badgeModal" class="hidden modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+      <div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl p-4 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div class="flex items-start justify-between border-b border-line pb-4 mb-5">
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="font-mono text-sm font-semibold tracking-wider text-ink uppercase">GitHub Profile Badge Studio</h2>
-              <span class="inline-flex items-center rounded-full bg-lime/10 px-2 py-0.5 text-[10px] font-mono font-medium text-lime">CAMO SAFE</span>
+              <h2 class="font-mono text-xs sm:text-sm font-semibold tracking-wider text-ink uppercase">GitHub Badge</h2>
             </div>
-            <p class="text-xs text-muted mt-0.5">Embed dynamic live-updating stats directly in your GitHub Profile README.</p>
+            <p class="text-xs text-muted mt-0.5">Embed stats directly in your GitHub Profile README.</p>
           </div>
           <button type="button" data-close-modal="badgeModal" class="text-muted hover:text-ink text-lg font-bold">×</button>
         </div>
 
         <!-- Live Preview Stage -->
-        <div class="relative flex min-h-[160px] items-center justify-center rounded-xl border border-line bg-canvas/80 p-5 overflow-hidden mb-5">
-          <div id="badgePreviewContainer" class="flex items-center justify-center w-full max-w-lg transition-all">
+        <div class="relative flex min-h-[140px] sm:min-h-[160px] items-center justify-center rounded-xl border border-line bg-canvas/80 p-3 sm:p-5 overflow-hidden mb-5">
+          <div id="badgePreviewContainer" class="flex items-center justify-center w-full max-w-lg transition-all overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div class="text-xs font-mono text-muted animate-pulse">Rendering preview...</div>
           </div>
         </div>
@@ -168,7 +167,7 @@ export function mountModalTemplates() {
           <div>
             <label class="block font-mono text-[11px] text-muted mb-1.5 uppercase tracking-wider">Format</label>
             <select id="badgeFormatSelect" class="w-full rounded-xl border border-line bg-canvas px-3 py-2 font-mono text-xs text-ink outline-none focus:border-accent">
-              <option value="card" selected>Dossier Card (README)</option>
+              <option value="card" selected>Profile Badge (README)</option>
               <option value="pill">Compact Pill (Shields)</option>
               <option value="cyber">Cyber Pill (Tactical)</option>
               <option value="for-the-badge">Chunky (For-The-Badge)</option>
@@ -202,16 +201,16 @@ export function mountModalTemplates() {
 
         <!-- Embed Snippet Box -->
         <div class="space-y-3">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="font-mono text-[11px] text-muted uppercase tracking-wider">Snippet Output</span>
-            <div class="flex gap-2">
-              <button type="button" id="badgeCopyMdBtn" class="inline-flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 font-mono text-xs font-bold text-onlime hover:brightness-105 active:scale-95 transition-all">
+            <div class="flex flex-wrap gap-1.5 sm:gap-2">
+              <button type="button" id="badgeCopyMdBtn" class="inline-flex items-center gap-1.5 rounded-lg bg-lime px-2.5 sm:px-3 py-1.5 font-mono text-xs font-bold text-onlime hover:brightness-105 active:scale-95 transition-all">
                 Copy Markdown
               </button>
-              <button type="button" id="badgeCopyHtmlBtn" class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-mono text-xs font-medium text-ink hover:bg-raised transition-colors">
+              <button type="button" id="badgeCopyHtmlBtn" class="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 sm:px-3 py-1.5 font-mono text-xs font-medium text-ink hover:bg-raised active:scale-95 transition-colors">
                 HTML
               </button>
-              <button type="button" id="badgeCopyUrlBtn" class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-mono text-xs font-medium text-ink hover:bg-raised transition-colors">
+              <button type="button" id="badgeCopyUrlBtn" class="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 sm:px-3 py-1.5 font-mono text-xs font-medium text-ink hover:bg-raised active:scale-95 transition-colors">
                 Raw URL
               </button>
             </div>
@@ -225,6 +224,5 @@ export function mountModalTemplates() {
     </div>
   `;
 
-
-  document.body.appendChild(container);
+	document.body.appendChild(container);
 }

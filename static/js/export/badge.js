@@ -60,7 +60,8 @@ function _updateStudio() {
   if (container) {
     container.innerHTML = '';
     const img = document.createElement('img');
-    img.src = badgeUrl;
+    const bustUrl = `${badgeUrl}${badgeUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+    img.src = bustUrl;
     img.alt = `Git-Spectre Badge - ${_activeLogin}`;
     img.className = 'max-w-full h-auto drop-shadow-md rounded-lg transition-transform duration-200 hover:scale-[1.02]';
     img.onerror = () => {

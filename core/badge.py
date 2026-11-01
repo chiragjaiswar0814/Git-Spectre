@@ -29,60 +29,80 @@ THEMES: Dict[str, Dict[str, str]] = {
     "spectre": {
         "bg_start": "#090d16",
         "bg_end": "#0f172a",
+        "card_bg": "#0b0f19",
         "border": "#1e293b",
+        "divider": "#1e293b",
         "title": "#f8fafc",
         "text": "#94a3b8",
         "muted": "#64748b",
         "accent": "#10b981",
         "accent_glow": "#22d3ee",
+        "role_color": "#38bdf8",
+        "star_color": "#f59e0b",
         "card_bar_bg": "rgba(255, 255, 255, 0.08)",
         "pill_left_bg": "#1e293b",
     },
     "dark": {
         "bg_start": "#0d1117",
         "bg_end": "#161b22",
+        "card_bg": "#0d1117",
         "border": "#30363d",
+        "divider": "#30363d",
         "title": "#f0f6fc",
         "text": "#8b949e",
         "muted": "#6e7681",
         "accent": "#58a6ff",
         "accent_glow": "#1f6feb",
+        "role_color": "#58a6ff",
+        "star_color": "#f59e0b",
         "card_bar_bg": "rgba(255, 255, 255, 0.08)",
         "pill_left_bg": "#21262d",
     },
     "tokyo": {
         "bg_start": "#1a1b26",
         "bg_end": "#16161e",
+        "card_bg": "#16161e",
         "border": "#2f3549",
+        "divider": "#2f3549",
         "title": "#c0caf5",
         "text": "#9aa5ce",
         "muted": "#565f89",
         "accent": "#bb9af7",
         "accent_glow": "#7dcfff",
+        "role_color": "#7dcfff",
+        "star_color": "#e0af68",
         "card_bar_bg": "rgba(255, 255, 255, 0.1)",
         "pill_left_bg": "#24283b",
     },
     "matrix": {
         "bg_start": "#030a05",
         "bg_end": "#051308",
+        "card_bg": "#030a05",
         "border": "#133e1a",
+        "divider": "#133e1a",
         "title": "#4ade80",
         "text": "#22c55e",
         "muted": "#166534",
         "accent": "#22c55e",
         "accent_glow": "#86efac",
+        "role_color": "#86efac",
+        "star_color": "#4ade80",
         "card_bar_bg": "rgba(34, 197, 94, 0.15)",
         "pill_left_bg": "#09230e",
     },
     "light": {
         "bg_start": "#ffffff",
         "bg_end": "#f8fafc",
+        "card_bg": "#ffffff",
         "border": "#e2e8f0",
+        "divider": "#e2e8f0",
         "title": "#0f172a",
         "text": "#475569",
         "muted": "#94a3b8",
         "accent": "#0284c7",
         "accent_glow": "#0ea5e9",
+        "role_color": "#0284c7",
+        "star_color": "#d97706",
         "card_bar_bg": "rgba(0, 0, 0, 0.06)",
         "pill_left_bg": "#e2e8f0",
     },
@@ -257,8 +277,221 @@ def generate_pill_badge(
 
 
 # ============================================================================
-# 2. RICH DOSSIER PROFILE CARD GENERATOR
+# 2. SLEEK DEVELOPER PROFILE BADGE GENERATOR
 # ============================================================================
+
+def _format_role(archetype: Optional[Dict[str, Any]]) -> str:
+    """Format developer archetype into a natural, professional title."""
+    if not archetype:
+        return "Full-Stack Developer"
+    raw = str(archetype.get("title") or archetype.get("label") or "Full-Stack Developer").strip()
+    upper_raw = raw.upper()
+    if upper_raw in ("CODE CRAFTSMAN", "THE GENERALIST"):
+        return "Full-Stack Developer"
+    if upper_raw == "THE POLYGLOT":
+        return "Polyglot Engineer"
+    if upper_raw.endswith(" SPECIALIST"):
+        prefix = raw[:-len(" SPECIALIST")].strip()
+        subwords = "-".join(sub.capitalize() for sub in prefix.split("-"))
+        return f"{subwords} Specialist"
+    words = []
+    for w in raw.split():
+        if w.lower() in ("in", "of", "and", "the"):
+            words.append(w.lower())
+        else:
+            words.append("-".join(sub.capitalize() for sub in w.split("-")))
+    return " ".join(words)
+
+
+def _format_stars(total_stars: int) -> str:
+    """Format stars with commas (e.g. 1,284) or clean compact suffix."""
+    if total_stars >= 1_000_000:
+        return f"{total_stars / 1_000_000:.1f}".rstrip("0").rstrip(".") + "M"
+    if total_stars >= 10_000:
+        return f"{total_stars / 1_000:.1f}".rstrip("0").rstrip(".") + "k"
+    return f"{total_stars:,}"
+
+
+def _get_top_language(languages: Optional[Dict[str, int]]) -> str:
+    """Return the developer's primary programming language."""
+    if not languages:
+        return "Developer"
+    items = list(languages.items())
+    if not items:
+        return "Developer"
+    return max(items, key=lambda x: x[1])[0]
+
+
+def _get_initials(name_or_login: str) -> str:
+    """Extract 1-2 letter initials for fallback vector avatar."""
+    parts = name_or_login.strip().split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    elif parts and len(parts[0]) >= 2:
+        return parts[0][:2].upper()
+    elif parts and len(parts[0]) == 1:
+        return parts[0][0].upper()
+    return "GS"
+
+
+def generate_profile_badge(
+    profile: Dict[str, Any],
+    score: Dict[str, Any],
+    archetype: Optional[Dict[str, Any]] = None,
+    languages: Optional[Dict[str, int]] = None,
+    total_stars: int = 0,
+    avatar_b64: Optional[str] = None,
+    theme: str = "spectre",
+    border: bool = True,
+    avatar_pos: str = "name",
+    rank_info: Optional[Dict[str, Any]] = None,
+    streaks: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Generate a clean, high-end developer pill badge matching the reference design:
+    [ ★ 1,284 | (Avatar) Zur Rinubi  Full-Stack Developer | 9,850 XP | TypeScript ]
+
+    Parameters:
+    - profile: Dict containing user profile ('login', 'name', 'avatar_url', etc.)
+    - score: Dict containing score ('total', 'tier', etc.)
+    - archetype: Archetype classification info
+    - languages: Language byte counts dictionary
+    - total_stars: Earned stargazers count
+    - avatar_b64: Optional base64-encoded avatar data URI
+    - theme: Theme key ('spectre', 'dark', 'tokyo', 'matrix', 'light')
+    - border: Whether to render subtle border stroke
+    - avatar_pos: 'name' (next to name), 'left' (far left), or 'none'
+    """
+    th = THEMES.get(theme.lower(), THEMES["spectre"])
+    star_color = th.get("star_color", "#f59e0b")
+    divider_color = th.get("divider", th["border"])
+    role_color = th.get("role_color", th.get("accent_glow", "#38bdf8"))
+    stroke_attr = f'stroke="{th["border"]}" stroke-width="1"' if border else ""
+
+    login = str(profile.get("login") or "developer").strip()
+    name = str(profile.get("name") or "").strip()
+    display_name = name if name else login
+
+    stars_count = int(total_stars or profile.get("stars_earned", 0))
+    stars_str = _format_stars(stars_count)
+
+    role_text = _format_role(archetype)
+    score_total = int(score.get("total", 0))
+    xp_str = f"{score_total:,} XP"
+
+    top_lang = _get_top_language(languages)
+    lang_color = _get_lang_color(top_lang)
+
+    display_name_e = html.escape(display_name, quote=True)
+    role_e = html.escape(role_text, quote=True)
+    stars_e = html.escape(stars_str, quote=True)
+    xp_e = html.escape(xp_str, quote=True)
+    lang_e = html.escape(top_lang, quote=True)
+    initials_e = html.escape(_get_initials(display_name), quote=True)
+
+    has_avatar = avatar_pos in ("name", "left")
+
+    x = 20.0
+    av_markup = ""
+    av_cx = None
+    div0_markup = ""
+
+    clean_id = re.sub(r'[^a-zA-Z0-9]', '', login)
+    clip_id = f"av-clip-{clean_id}" if clean_id else "av-clip-user"
+
+    if has_avatar and avatar_pos == "left":
+        av_cx = x + 14.0
+        x = av_cx + 14.0 + 12.0
+        div0_x = x
+        div0_markup = f'<line x1="{div0_x:.1f}" y1="12" x2="{div0_x:.1f}" y2="34" stroke="{divider_color}" stroke-width="1"/>'
+        x += 16.0
+
+    star_icon_x = x
+    star_text_x = star_icon_x + 18.0
+    star_w = 18.0 + len(stars_str) * 7.8
+    x = star_icon_x + star_w
+    div1_x = x + 16.0
+    x = div1_x + 16.0
+
+    if has_avatar and avatar_pos == "name":
+        av_cx = x + 14.0
+        x = av_cx + 14.0 + 10.0
+
+    name_x = x
+    name_w = len(display_name) * 8.2
+    role_x = name_x + name_w + 10.0
+    role_w = len(role_text) * 7.0
+    x = role_x + role_w
+    div2_x = x + 16.0
+    x = div2_x + 16.0
+
+    xp_x = x
+    xp_w = len(xp_str) * 7.8
+    x = xp_x + xp_w
+    div3_x = x + 16.0
+    x = div3_x + 16.0
+
+    lang_x = x
+    lang_w = len(top_lang) * 7.6
+    total_w = int(lang_x + lang_w + 20.0)
+
+    title_color = th["title"]
+
+    # Avatar element markup
+    if has_avatar and av_cx is not None:
+        if avatar_b64:
+            avatar_href = avatar_b64 if avatar_b64.startswith("data:") else f"data:image/png;base64,{avatar_b64}"
+            av_content = f'<image href="{avatar_href}" x="{av_cx - 14.0:.1f}" y="9" width="28" height="28" clip-path="url(#{clip_id})" preserveAspectRatio="xMidYMid slice"/>'
+        else:
+            av_content = f'<text x="{av_cx:.1f}" y="27" font-size="11" font-weight="700" fill="{title_color}" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif">{initials_e}</text>'
+
+        av_markup = f"""  <defs>
+    <clipPath id="{clip_id}"><circle cx="{av_cx:.1f}" cy="23" r="14"/></clipPath>
+  </defs>
+  <circle cx="{av_cx:.1f}" cy="23" r="14" fill="{th.get('card_bar_bg', 'rgba(255,255,255,0.08)')}" stroke="{divider_color}" stroke-width="1"/>
+  {av_content}
+  <circle cx="{av_cx:.1f}" cy="23" r="14" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>"""
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{total_w}" height="46" viewBox="0 0 {total_w} 46" role="img" aria-label="Git-Spectre Profile: {display_name_e}">
+  <title>Git-Spectre: {display_name_e} ({role_e}) | {xp_e} | {lang_e}</title>
+  <style>
+    .bold {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; }}
+    .med {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 500; }}
+    .semi {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 600; }}
+  </style>
+
+  <!-- Card Background -->
+  <rect width="{total_w}" height="46" rx="12" fill="{th.get('card_bg', th['bg_start'])}" {stroke_attr}/>
+
+  <!-- Avatar -->
+{av_markup}
+  {div0_markup}
+
+  <!-- Star Section -->
+  <g transform="translate({star_icon_x:.1f}, 16)">
+    <path d="M6.5 1l1.7 3.5 3.8.5-2.8 2.7.7 3.8-3.4-1.8-3.4 1.8.7-3.8-2.8-2.7 3.8-.5z" fill="{star_color}"/>
+  </g>
+  <text x="{star_text_x:.1f}" y="27" font-size="13.5" fill="{star_color}" class="bold">{stars_e}</text>
+
+  <!-- Divider 1 -->
+  <line x1="{div1_x:.1f}" y1="12" x2="{div1_x:.1f}" y2="34" stroke="{divider_color}" stroke-width="1"/>
+
+  <!-- Developer Identity -->
+  <text x="{name_x:.1f}" y="27" font-size="14" fill="{th['title']}" class="bold">{display_name_e}</text>
+  <text x="{role_x:.1f}" y="27" font-size="13" fill="{role_color}" class="med">{role_e}</text>
+
+  <!-- Divider 2 -->
+  <line x1="{div2_x:.1f}" y1="12" x2="{div2_x:.1f}" y2="34" stroke="{divider_color}" stroke-width="1"/>
+
+  <!-- Dev Score XP -->
+  <text x="{xp_x:.1f}" y="27" font-size="13.5" fill="{th['title']}" class="semi">{xp_e}</text>
+
+  <!-- Divider 3 -->
+  <line x1="{div3_x:.1f}" y1="12" x2="{div3_x:.1f}" y2="34" stroke="{divider_color}" stroke-width="1"/>
+
+  <!-- Primary Language -->
+  <text x="{lang_x:.1f}" y="27" font-size="13.5" fill="{lang_color}" class="semi">{lang_e}</text>
+</svg>"""
+
 
 def generate_dossier_card(
     profile: Dict[str, Any],
@@ -270,186 +503,23 @@ def generate_dossier_card(
     total_stars: int = 0,
     theme: str = "spectre",
     border: bool = True,
+    avatar_b64: Optional[str] = None,
+    avatar_pos: str = "name",
 ) -> str:
-    """Generate a rich, tactical ~495x195 SVG dossier card for GitHub READMEs.
-    Strictly standard vector SVG with no external images, perfectly Camo safe.
-    """
-    th = THEMES.get(theme.lower(), THEMES["spectre"])
-
-    # Extract & clean inputs
-    login = html.escape(str(profile.get("login") or "developer"), quote=True)
-    name = str(profile.get("name") or "").strip()
-    display_title = html.escape(name if name else f"@{login}", quote=True)
-
-    total_score = int(score.get("total", 0))
-    tier = str(score.get("tier") or score.get("grade") or "B").upper()
-    grade_color = GRADE_COLORS.get(tier, th["accent"])
-
-    # Archetype
-    arc_title = "CODE CRAFTSMAN"
-    if archetype:
-        arc_title = str(archetype.get("title") or archetype.get("label") or arc_title).upper()
-    arc_e = html.escape(arc_title, quote=True)
-
-    # Rank
-    rank_str = "—"
-    if rank_info and rank_info.get("all_time_rank"):
-        rank_str = f"#{rank_info['all_time_rank']}"
-    elif rank_info and rank_info.get("monthly_rank"):
-        rank_str = f"#{rank_info['monthly_rank']}"
-
-    # Stars
-    stars_str = _compact_number(total_stars or profile.get("stars_earned", 0))
-
-    # Repos or Streak
-    longest_streak = 0
-    if streaks and isinstance(streaks, dict):
-        longest_streak = int(streaks.get("longest", 0) or streaks.get("current", 0))
-
-    streak_or_repos_val = f"{longest_streak}d" if longest_streak > 0 else str(profile.get("public_repos", 0))
-    streak_or_repos_label = "STREAK" if longest_streak > 0 else "REPOS"
-
-    # Languages
-    lang_items = list((languages or {}).items())[:4]
-    total_bytes = sum(b for _, b in lang_items) or 1
-    lang_slices: List[Dict[str, Any]] = []
-    accumulated_pct = 0.0
-
-    for lang_name, byte_count in lang_items:
-        pct = (byte_count / total_bytes) * 100
-        color = _get_lang_color(lang_name)
-        lang_slices.append({
-            "name": html.escape(lang_name, quote=True),
-            "pct": round(pct, 1),
-            "color": color,
-            "width": max(pct, 2.0),
-        })
-
-    # Border style
-    stroke_attr = f'stroke="{th["border"]}" stroke-width="1"' if border else ""
-
-    # Score bar calculation (0 - 1000 scaled to 90px width)
-    score_bar_w = min(max(int((total_score / 1000) * 80), 4), 80)
-
-    # Compute language bar segments (width = 435 total)
-    lang_bar_markup = []
-    curr_x = 30.0
-    total_bar_w = 435.0
-
-    if lang_slices:
-        for idx, s in enumerate(lang_slices):
-            w = (s["pct"] / 100.0) * total_bar_w
-            # Round ends for first and last
-            rx = "3" if (idx == 0 or idx == len(lang_slices) - 1) else "0"
-            lang_bar_markup.append(
-                f'<rect x="{curr_x:.1f}" y="146" width="{w:.1f}" height="6" fill="{s["color"]}" rx="{rx}"/>'
-            )
-            curr_x += w
-    else:
-        lang_bar_markup.append(
-            f'<rect x="30" y="146" width="{total_bar_w}" height="6" fill="{th["card_bar_bg"]}" rx="3"/>'
-        )
-
-    # Compute language legend row (x offset starting at 30)
-    legend_markup = []
-    leg_x = 30
-    for s in lang_slices:
-        legend_markup.append(
-            f'<circle cx="{leg_x}" cy="168" r="3.5" fill="{s["color"]}"/>'
-            f'<text x="{leg_x + 8}" y="171" fill="{th["text"]}" font-size="10" font-family="-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif">'
-            f'{s["name"]} <tspan fill="{th["muted"]}">{s["pct"]}%</tspan></text>'
-        )
-        leg_x += int(len(s["name"]) * 6.5 + 46)
-        if leg_x > 400:
-            break
-
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 495 195" width="495" height="195" role="img" aria-label="Git-Spectre Dossier: {login}">
-  <title>Git-Spectre Dossier: {login}</title>
-  <defs>
-    <linearGradient id="card-grad" x1="0" y1="0" x2="0" y2="100%">
-      <stop offset="0%" stop-color="{th['bg_start']}"/>
-      <stop offset="100%" stop-color="{th['bg_end']}"/>
-    </linearGradient>
-    <linearGradient id="glow-grad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="{th['accent']}"/>
-      <stop offset="100%" stop-color="{th['accent_glow']}"/>
-    </linearGradient>
-  </defs>
-
-  <style>
-    .mono {{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }}
-    .sans {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }}
-  </style>
-
-  <!-- Card Background -->
-  <rect width="495" height="195" rx="14" fill="url(#card-grad)" {stroke_attr}/>
-
-  <!-- Top Reticle & System Header -->
-  <g transform="translate(30, 22)">
-    <!-- Eye Reticle Icon -->
-    <circle cx="8" cy="8" r="7" fill="none" stroke="{th['accent']}" stroke-width="1.5"/>
-    <circle cx="8" cy="8" r="2.5" fill="{th['accent']}"/>
-    <line x1="8" y1="0" x2="8" y2="4" stroke="{th['accent']}" stroke-width="1.5"/>
-    <line x1="8" y1="12" x2="8" y2="16" stroke="{th['accent']}" stroke-width="1.5"/>
-    <line x1="0" y1="8" x2="4" y2="8" stroke="{th['accent']}" stroke-width="1.5"/>
-    <line x1="12" y1="8" x2="16" y2="8" stroke="{th['accent']}" stroke-width="1.5"/>
-
-    <!-- System Monospace Label -->
-    <text x="24" y="11" fill="{th['muted']}" font-size="9.5" font-weight="600" letter-spacing="1.5" class="mono">
-      GIT-SPECTRE // DEVELOPER DOSSIER
-    </text>
-  </g>
-
-  <!-- Grade Badge (Top Right) -->
-  <g transform="translate(415, 18)">
-    <rect width="50" height="22" rx="6" fill="{th['pill_left_bg']}" stroke="{grade_color}" stroke-opacity="0.4" stroke-width="1"/>
-    <text x="25" y="15" fill="{grade_color}" font-size="11" font-weight="800" text-anchor="middle" class="mono">{tier}</text>
-  </g>
-
-  <!-- Developer Identity Row -->
-  <text x="30" y="58" fill="{th['title']}" font-size="16" font-weight="700" class="sans">
-    {display_title}
-  </text>
-  <g transform="translate(30, 66)">
-    <rect width="{len(arc_title) * 6.5 + 16}" height="18" rx="4" fill="{th['card_bar_bg']}"/>
-    <text x="8" y="13" fill="{th['accent']}" font-size="9" font-weight="700" letter-spacing="0.8" class="mono">{arc_e}</text>
-  </g>
-
-  <!-- Metrics Grid (Y = 96) -->
-  <!-- Col 1: Dev Score -->
-  <g transform="translate(30, 96)">
-    <text x="0" y="10" fill="{th['muted']}" font-size="9" font-weight="600" letter-spacing="0.8" class="mono">DEV SCORE</text>
-    <text x="0" y="28" fill="{th['title']}" font-size="18" font-weight="800" class="mono">{total_score}<tspan fill="{th['muted']}" font-size="11" font-weight="500">/1000</tspan></text>
-    <!-- Mini progress track -->
-    <rect x="0" y="34" width="80" height="3" rx="1.5" fill="{th['card_bar_bg']}"/>
-    <rect x="0" y="34" width="{score_bar_w}" height="3" rx="1.5" fill="url(#glow-grad)"/>
-  </g>
-
-  <!-- Col 2: Global Rank -->
-  <g transform="translate(150, 96)">
-    <text x="0" y="10" fill="{th['muted']}" font-size="9" font-weight="600" letter-spacing="0.8" class="mono">GLOBAL RANK</text>
-    <text x="0" y="28" fill="{th['title']}" font-size="18" font-weight="800" class="mono">{rank_str}</text>
-  </g>
-
-  <!-- Col 3: Stars Earned -->
-  <g transform="translate(265, 96)">
-    <text x="0" y="10" fill="{th['muted']}" font-size="9" font-weight="600" letter-spacing="0.8" class="mono">STARS EARNED</text>
-    <text x="0" y="28" fill="{th['title']}" font-size="18" font-weight="800" class="mono">★ {stars_str}</text>
-  </g>
-
-  <!-- Col 4: Streak / Repos -->
-  <g transform="translate(380, 96)">
-    <text x="0" y="10" fill="{th['muted']}" font-size="9" font-weight="600" letter-spacing="0.8" class="mono">{streak_or_repos_label}</text>
-    <text x="0" y="28" fill="{th['title']}" font-size="18" font-weight="800" class="mono">{streak_or_repos_val}</text>
-  </g>
-
-  <!-- Stacked Language Distribution Bar -->
-  {''.join(lang_bar_markup)}
-
-  <!-- Language Legend -->
-  {''.join(legend_markup)}
-
-</svg>"""
+    """Developer Profile Badge generator (compatible alias for generate_profile_badge)."""
+    return generate_profile_badge(
+        profile=profile,
+        score=score,
+        archetype=archetype,
+        languages=languages,
+        total_stars=total_stars,
+        avatar_b64=avatar_b64,
+        theme=theme,
+        border=border,
+        avatar_pos=avatar_pos,
+        rank_info=rank_info,
+        streaks=streaks,
+    )
 
 
 # ============================================================================
@@ -457,16 +527,17 @@ def generate_dossier_card(
 # ============================================================================
 
 def generate_not_found_badge(username: str, style: str = "pill", theme: str = "spectre") -> str:
-    """Generate an informative, graceful error badge when profile is not found."""
+    """Generate a clean, graceful error badge when profile is not found."""
     if style == "card":
         th = THEMES.get(theme.lower(), THEMES["spectre"])
         u_e = html.escape(username, quote=True)
-        return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 495 120" width="495" height="120" role="img">
-  <rect width="495" height="120" rx="12" fill="{th['bg_start']}" stroke="{th['border']}" stroke-width="1"/>
-  <circle cx="35" cy="40" r="12" fill="#ef4444" fill-opacity="0.15"/>
-  <text x="35" y="44" fill="#ef4444" font-size="14" font-weight="bold" text-anchor="middle" font-family="sans-serif">!</text>
-  <text x="60" y="36" fill="{th['title']}" font-size="14" font-weight="bold" font-family="sans-serif">Git-Spectre // User Not Found</text>
-  <text x="60" y="55" fill="{th['muted']}" font-size="11" font-family="sans-serif">Could not find public profile for &quot;{u_e}&quot;.</text>
-  <text x="60" y="90" fill="{th['accent']}" font-size="10" font-family="monospace">VISIT GIT-SPECTRE.VERCEL.APP TO SCAN</text>
+        return f"""<svg xmlns="http://www.w3.org/2000/svg" width="380" height="46" viewBox="0 0 380 46" role="img" aria-label="Git-Spectre: User Not Found">
+  <rect width="380" height="46" rx="12" fill="{th.get('card_bg', th['bg_start'])}" stroke="{th['border']}" stroke-width="1"/>
+  <circle cx="25" cy="23" r="12" fill="#ef4444" fill-opacity="0.15"/>
+  <text x="25" y="27" fill="#ef4444" font-size="13" font-weight="bold" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">!</text>
+  <line x1="48" y1="12" x2="48" y2="34" stroke="{th.get('divider', th['border'])}" stroke-width="1"/>
+  <text x="62" y="27" fill="{th['title']}" font-size="13.5" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">User Not Found: @{u_e}</text>
+  <line x1="260" y1="12" x2="260" y2="34" stroke="{th.get('divider', th['border'])}" stroke-width="1"/>
+  <text x="276" y="27" fill="{th['accent']}" font-size="12" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">git-spectre</text>
 </svg>"""
     return generate_pill_badge("Git-Spectre", "not found", "#6b7280", style=style, theme=theme)

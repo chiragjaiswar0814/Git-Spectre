@@ -145,24 +145,26 @@ export function renderActivity(dossier) {
   }
 
   const activityGridHtml = activityHours.length ? `
-    <div class="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[2px] mt-4">
-      <span></span>
-      ${Array.from({ length: 24 }, (_, h) => `
-        <span class="text-center font-mono text-[9px] text-muted">
-          ${h % 6 === 0 ? String(h).padStart(2, '0') : ''}
-        </span>
-      `).join('')}
+    <div class="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
+      <div class="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[2px] mt-4 min-w-[280px]">
+        <span></span>
+        ${Array.from({ length: 24 }, (_, h) => `
+          <span class="text-center font-mono text-[9px] text-muted">
+            ${h % 6 === 0 ? String(h).padStart(2, '0') : ''}
+          </span>
+        `).join('')}
 
-      ${activityHours.map((row, d) => `
-        <span class="self-center text-[10px] text-muted font-mono">${DAYS[d]}</span>
-        ${row.map((val, h) => {
-          const isPeak = d === peakDay && h === peakHour && val > 0;
-          return `
-            <span title="${DAYS[d]} ${String(h).padStart(2, '0')}:00 UTC · ${val} commits"
-              class="aspect-square rounded-[2px] transition-transform hover:scale-125 ${getHourClass(val, isPeak)}"></span>
-          `;
-        }).join('')}
-      `).join('')}
+        ${activityHours.map((row, d) => `
+          <span class="self-center text-[10px] text-muted font-mono">${DAYS[d]}</span>
+          ${row.map((val, h) => {
+            const isPeak = d === peakDay && h === peakHour && val > 0;
+            return `
+              <span title="${DAYS[d]} ${String(h).padStart(2, '0')}:00 UTC · ${val} commits"
+                class="aspect-square rounded-[2px] transition-transform hover:scale-125 ${getHourClass(val, isPeak)}"></span>
+            `;
+          }).join('')}
+        `).join('')}
+      </div>
     </div>
   ` : '<p class="text-xs text-muted font-mono py-4">No event timestamps recorded</p>';
 
@@ -208,7 +210,7 @@ export function renderActivity(dossier) {
   container.innerHTML = `
     <div class="space-y-4">
       <!-- Heatmap Panel -->
-      <section class="rounded-2xl border border-line bg-surface p-6 sm:p-7">
+      <section class="rounded-2xl border border-line bg-surface p-3.5 sm:p-7 min-w-0 overflow-hidden">
         <header class="flex flex-wrap items-baseline justify-between gap-3 mb-6">
           <div>
             <h3 class="text-base font-semibold tracking-tight text-ink">Contributions & Streaks</h3>
@@ -227,29 +229,29 @@ export function renderActivity(dossier) {
 
         <!-- Streaks 3-stat block -->
         <dl class="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3 mb-6">
-          <div class="flex items-center gap-4 bg-surface px-5 py-3.5">
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-danger/10 text-danger">${icon('flame', 'w-5 h-5')}</span>
-            <div>
-              <dt class="text-xs text-muted">Current streak</dt>
-              <dd class="font-mono text-xl font-semibold tabular-nums text-limeink">
+          <div class="flex items-center gap-3 sm:gap-4 bg-surface px-3.5 sm:px-5 py-3 sm:py-3.5 min-w-0">
+            <span class="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl bg-danger/10 text-danger">${icon('flame', 'w-4 h-4 sm:w-5 sm:h-5')}</span>
+            <div class="min-w-0">
+              <dt class="text-[11px] sm:text-xs text-muted truncate">Current streak</dt>
+              <dd class="font-mono text-lg sm:text-xl font-semibold tabular-nums text-limeink">
                 ${streaks.current || 0} <span class="text-xs font-normal text-muted">days</span>
               </dd>
             </div>
           </div>
-          <div class="flex items-center gap-4 bg-surface px-5 py-3.5">
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">${icon('zap', 'w-5 h-5')}</span>
-            <div>
-              <dt class="text-xs text-muted">Longest streak</dt>
-              <dd class="font-mono text-xl font-semibold tabular-nums text-accent">
+          <div class="flex items-center gap-3 sm:gap-4 bg-surface px-3.5 sm:px-5 py-3 sm:py-3.5 min-w-0">
+            <span class="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">${icon('zap', 'w-4 h-4 sm:w-5 sm:h-5')}</span>
+            <div class="min-w-0">
+              <dt class="text-[11px] sm:text-xs text-muted truncate">Longest streak</dt>
+              <dd class="font-mono text-lg sm:text-xl font-semibold tabular-nums text-accent">
                 ${streaks.longest || 0} <span class="text-xs font-normal text-muted">days</span>
               </dd>
             </div>
           </div>
-          <div class="flex items-center gap-4 bg-surface px-5 py-3.5">
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-lime/10 text-lime">${icon('calendar', 'w-5 h-5')}</span>
-            <div>
-              <dt class="text-xs text-muted">Active push days</dt>
-              <dd class="font-mono text-xl font-semibold tabular-nums text-ink">
+          <div class="flex items-center gap-3 sm:gap-4 bg-surface px-3.5 sm:px-5 py-3 sm:py-3.5 min-w-0">
+            <span class="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl bg-lime/10 text-lime">${icon('calendar', 'w-4 h-4 sm:w-5 sm:h-5')}</span>
+            <div class="min-w-0">
+              <dt class="text-[11px] sm:text-xs text-muted truncate">Active push days</dt>
+              <dd class="font-mono text-lg sm:text-xl font-semibold tabular-nums text-ink">
                 ${streaks.total_active_days || 0} <span class="text-xs font-normal text-muted">days</span>
               </dd>
             </div>
@@ -260,7 +262,7 @@ export function renderActivity(dossier) {
       </section>
 
       <!-- Temporal Analytics Panel -->
-      <section class="rounded-2xl border border-line bg-surface p-6 sm:p-7">
+      <section class="rounded-2xl border border-line bg-surface p-3.5 sm:p-7 min-w-0 overflow-hidden">
         <header class="mb-5">
           <h3 class="text-base font-semibold tracking-tight text-ink">Temporal Analytics</h3>
           <p class="mt-0.5 text-xs text-muted">When they code, and how their stack has shifted over time</p>

@@ -364,7 +364,7 @@ export async function exportShareCard(dossier) {
     ctx.font = `500 10px ${mono}`;
     ctx.fillStyle = '#71717a';
     ctx.textBaseline = 'middle';
-    drawTrackedText(ctx, '// DEVELOPER DEEP-PROFILER', footX, footMidY, 1.0, 'left');
+    drawTrackedText(ctx, '', footX, footMidY, 1.0, 'left');
 
     drawTrackedText(ctx, 'git-spectre.vercel.app', W - 30, footMidY, 0.8, 'right');
     ctx.restore();

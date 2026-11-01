@@ -112,17 +112,29 @@ class TestDossierCardGeneration:
             theme="spectre",
         )
 
-        assert 'viewBox="0 0 495 195"' in svg
+        assert 'height="46"' in svg
         assert "The Octocat" in svg
-        assert "840" in svg
-        assert "#42" in svg
-        assert "28d" in svg
-        assert "★ 1.2k" in svg
+        assert "840 XP" in svg
+        assert "1,250" in svg
         assert "Python" in svg
-        assert "TypeScript" in svg
-        assert "Rust" in svg
+        assert "Polyglot" in svg
 
         # XML Parsing verification
+        tree = ET.fromstring(svg)
+        assert tree.tag == "{http://www.w3.org/2000/svg}svg"
+
+    def test_dossier_card_with_avatar(self):
+        profile = {"login": "testdev", "name": "Test Developer"}
+        score = {"total": 950, "tier": "S+"}
+        avatar_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        svg = generate_dossier_card(
+            profile=profile,
+            score=score,
+            avatar_b64=avatar_b64,
+            theme="spectre",
+        )
+        assert "data:image/png;base64," in svg
+        assert "av-clip-testdev" in svg
         tree = ET.fromstring(svg)
         assert tree.tag == "{http://www.w3.org/2000/svg}svg"
 
@@ -131,13 +143,13 @@ class TestDossierCardGeneration:
         score = {"total": 980, "tier": "S+"}
         for theme_name in THEMES:
             svg = generate_dossier_card(profile, score, theme=theme_name)
-            assert 'viewBox="0 0 495 195"' in svg
+            assert 'height="46"' in svg
             tree = ET.fromstring(svg)
             assert tree.tag == "{http://www.w3.org/2000/svg}svg"
 
     def test_not_found_card(self):
         svg = generate_not_found_badge("ghost_user", style="card", theme="spectre")
-        assert "Git-Spectre // User Not Found" in svg
+        assert "User Not Found: @ghost_user" in svg
         assert "ghost_user" in svg
         tree = ET.fromstring(svg)
         assert tree.tag == "{http://www.w3.org/2000/svg}svg"
@@ -173,7 +185,7 @@ class TestBadgeRoute:
         with _get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO leaderboard_profiles (
+                INSERT OR REPLACE INTO leaderboard_profiles (
                     login, name, avatar_url, dev_score, score_tier,
                     archetype_title, archetype_badge, dev_level,
                     primary_language, public_repos, stars_earned, followers,
@@ -198,15 +210,16 @@ class TestBadgeRoute:
         # 2. Card badge via query param
         card_resp = client.get("/api/badge/testcoder?style=card&theme=matrix")
         assert card_resp.status_code == 200
-        assert "495" in card_resp.text
+        assert 'height="46"' in card_resp.text
         assert "Test Coder" in card_resp.text
+        assert "450" in card_resp.text
         assert "890" in card_resp.text
         assert "Python" in card_resp.text
 
         # 3. Card badge via direct alias route
         alias_resp = client.get("/api/badge/card/testcoder")
         assert alias_resp.status_code == 200
-        assert 'viewBox="0 0 495 195"' in alias_resp.text
+        assert 'height="46"' in alias_resp.text
         assert "Test Coder" in alias_resp.text
 
         # 4. Pill badge with archetype metric

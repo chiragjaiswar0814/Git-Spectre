@@ -94,7 +94,7 @@ export function renderRadarDna(dossier) {
   }
 
   container.innerHTML = `
-    <section class="rounded-2xl border border-line bg-surface p-6 sm:p-7">
+    <section class="rounded-2xl border border-line bg-surface p-3.5 sm:p-7 min-w-0 overflow-hidden">
       <header class="flex flex-wrap items-baseline justify-between gap-3 mb-6">
         <div>
           <h3 class="text-base font-semibold tracking-tight text-ink">Language DNA</h3>

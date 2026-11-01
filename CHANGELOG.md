@@ -3,6 +3,38 @@
 All notable changes to Git-Spectre are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.1.2] — 2026-11-01
+
+### Added
+
+- **Modern Developer Profile Badge System (`core/badge.py`, `static/js/export/badge.js`, `static/js/components/modalTemplates.js`)**:
+    - Complete redesign of the GitHub Profile README card embed: transitioned from the verbose dossier layout into a sleek, professional, human-designed developer pill badge (`[ ★ 1,284 | (Avatar) Zur Rinubi  Full-Stack Developer | 9,850 XP | TypeScript ]`), completely free of AI slop text.
+    - Native GitHub profile avatar embedding with base64 data URI inlining and clean vector initials fallback.
+    - Professional developer title/role derivation from developer archetypes (e.g., "Full-Stack Developer", "Polyglot Engineer", "Systems Specialist").
+    - Primary language badge with official GitHub language color dots.
+    - Full theme suite: `spectre` (dark neon), `dark` (GitHub dark), `tokyo` (Tokyo Night), `matrix` (Hacker Matrix), and `light` (Clean Light).
+    - Full GitHub Camo image proxy compatibility with zero external font blocking, pure SVG vector geometry, and fast load times.
+    - Dedicated interactive badge studio modal with real-time live preview, style toggles, and instant one-click Markdown, HTML, and Raw URL copy actions.
+    - Unit and integration test suite coverage in `tests/test_badge.py`.
+
+### Changed / Improved
+
+- **Ultra-Narrow 320px Responsive Layout Optimization**:
+    - **Floating Action Dock (`#actionDock`)**: Replaced fixed-width and transform-based centering with responsive `inset-x-2 w-[calc(100vw-1rem)]` bounds and equal flex distributions (`flex-1`), ensuring the PDF, PNG, Badge, and Wrapped export buttons remain perfectly visible, aligned, and tap-friendly on 320px screens without clipping or overflow.
+    - **Quick Explorer (`#explorerPanel`)**: Added flex min-width constraints (`min-w-0`) and text truncation to repository cards and links, preventing long repository names (e.g., `user.github.io`, `long-repo-name`) from forcing horizontal page blowouts.
+    - **Followers & Following Grid**: Transitioned to single-column responsive grids on ultra-compact mobile viewports (`grid-cols-1 xs:grid-cols-2`) with tighter padding.
+    - **Activity & Heatmap Panels**: Wrapped the 24-hour activity grid in a smooth, scrollbar-hidden horizontal scroll container (`overflow-x-auto [scrollbar-width:none]`), preventing horizontal page extension on small screens.
+    - **Gamification & Badges Grid**: Adjusted achievement badges grid to 2 columns on mobile (`grid-cols-2 xs:grid-cols-3 sm:grid-cols-5`) and collapsed inactive rank ladder step names on mobile viewports.
+    - **Radar DNA & Identity Cards**: Tightened mobile paddings (`p-3.5 sm:p-7`) and constrained text items with `min-w-0` and `overflow-hidden`.
+
+### Fixed
+
+- **Star Count Calculation on Profile Badge (`main.py`, `core/service.py`)**:
+    - Resolved an issue where the Profile Badge star count displayed `0` due to a key mismatch (`stargazers_count` vs `stars`) in top repository analytics and bypassed database cache extraction.
+    - Extracted total stars directly from `data["stats"]["total_stars"]` with repository fallback and persisted correct `stars_earned` values into the local/Turso leaderboard SQLite storage.
+
+---
+
 ## [3.1.1] — 2026-10-28
 
 ### Added

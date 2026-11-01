@@ -11,6 +11,7 @@ import asyncio
 import html as _html
 from typing import Any, Dict, List, Optional
 
+import base64
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi import Path as FPath
@@ -54,6 +55,7 @@ from core.badge import (
     generate_dossier_card,
     generate_not_found_badge,
     generate_pill_badge,
+    generate_profile_badge,
 )
 from core.service import _run_analysis
 from core.leaderboard import (
@@ -448,6 +450,38 @@ async def profile_rank_endpoint(request: Request, username: str) -> Dict[str, An
     return get_profile_rank(clean_username)
 
 
+_AVATAR_B64_CACHE: Dict[str, str] = {}
+
+
+async def _fetch_avatar_b64(avatar_url: Optional[str]) -> Optional[str]:
+    """Fetch GitHub avatar and convert to base64 data URI for Camo-safe SVG embedding."""
+    if not avatar_url:
+        return None
+
+    clean_url = avatar_url.strip()
+    if clean_url in _AVATAR_B64_CACHE:
+        return _AVATAR_B64_CACHE[clean_url]
+
+    sep = "&" if "?" in clean_url else "?"
+    req_url = f"{clean_url}{sep}s=64"
+
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(req_url, headers={"User-Agent": "Git-Spectre"})
+            if resp.status_code == 200 and resp.content:
+                content_type = resp.headers.get("content-type", "image/png").split(";")[0].strip()
+                b64 = base64.b64encode(resp.content).decode("utf-8")
+                data_uri = f"data:{content_type};base64,{b64}"
+                if len(_AVATAR_B64_CACHE) > 1000:
+                    _AVATAR_B64_CACHE.pop(next(iter(_AVATAR_B64_CACHE)))
+                _AVATAR_B64_CACHE[clean_url] = data_uri
+                return data_uri
+    except Exception as e:
+        logger.debug("Could not fetch avatar for badge (%s): %s", clean_url, e)
+
+    return None
+
+
 @app.get("/api/badge/{username}", include_in_schema=False)
 @app.get("/api/badge/card/{username}", include_in_schema=False)
 async def badge_svg(
@@ -488,8 +522,13 @@ async def badge_svg(
                 "profile": {
                     "login": db_profile["login"],
                     "name": db_profile.get("name"),
+                    "avatar_url": db_profile.get("avatar_url"),
                     "public_repos": db_profile.get("public_repos", 0),
                     "stars_earned": db_profile.get("stars_earned", 0),
+                },
+                "stats": {
+                    "total_stars": db_profile.get("stars_earned", 0),
+                    "own_repos": db_profile.get("public_repos", 0),
                 },
                 "score": {
                     "total": db_profile.get("dev_score", 0),
@@ -506,7 +545,7 @@ async def badge_svg(
             }
 
     if not data:
-        svg = generate_not_found_badge(clean_user, style="card" if style_clean == "card" else "pill", theme=theme_clean)
+        svg = generate_not_found_badge(clean_user, style="card" if style_clean in ("card", "badge", "profile") else "pill", theme=theme_clean)
         return Response(
             svg,
             media_type="image/svg+xml; charset=utf-8",
@@ -518,7 +557,13 @@ async def badge_svg(
     arc = data.get("archetype", {})
     langs = data.get("languages", {})
     streaks = data.get("streaks", {})
-    total_stars = sum(r.get("stargazers_count", 0) for r in data.get("top_repos", [])) or p.get("stars_earned", 0)
+    stats_data = data.get("stats", {})
+    total_stars = stats_data.get("total_stars")
+    if total_stars is None:
+        total_stars = sum(
+            r.get("stars", 0) or r.get("stargazers_count", 0)
+            for r in data.get("top_repos", [])
+        ) or p.get("stars_earned", 0)
 
     # Rank metadata
     try:
@@ -526,8 +571,16 @@ async def badge_svg(
     except Exception:
         rank_data = None
 
-    if style_clean == "card":
-        svg = generate_dossier_card(
+    if style_clean in ("card", "badge", "profile"):
+        # Fetch user's avatar for embedding in profile badge
+        avatar_b64 = None
+        av_url = p.get("avatar_url") or f"https://avatars.githubusercontent.com/{clean_user}"
+        try:
+            avatar_b64 = await _fetch_avatar_b64(av_url)
+        except Exception:
+            avatar_b64 = None
+
+        svg = generate_profile_badge(
             profile=p,
             score=sc,
             archetype=arc,
@@ -537,6 +590,7 @@ async def badge_svg(
             total_stars=total_stars,
             theme=theme_clean,
             border=border,
+            avatar_b64=avatar_b64,
         )
     else:
         # Determine left / right labels based on selected metric
@@ -578,11 +632,14 @@ async def badge_svg(
             theme=theme_clean,
         )
 
+    is_preview = "_t" in request.query_params or "no-cache" in request.headers.get("cache-control", "")
+    cache_header = "no-cache, no-store, must-revalidate" if is_preview else "public, max-age=1800, s-maxage=1800, stale-while-revalidate=86400"
+
     return Response(
         svg,
         media_type="image/svg+xml; charset=utf-8",
         headers={
-            "Cache-Control": "public, max-age=1800, s-maxage=1800, stale-while-revalidate=86400",
+            "Cache-Control": cache_header,
         },
     )
 
