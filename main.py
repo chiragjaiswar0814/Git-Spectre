@@ -11,6 +11,7 @@ import asyncio
 import html as _html
 from typing import Any, Dict, List, Optional
 
+import base64
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi import Path as FPath
@@ -49,8 +50,20 @@ from core.schemas import (
     _validate_token,
     _validate_username,
 )
+from core.badge import (
+    GRADE_COLORS,
+    generate_dossier_card,
+    generate_not_found_badge,
+    generate_pill_badge,
+    generate_profile_badge,
+)
 from core.service import _run_analysis
-from core.leaderboard import get_leaderboard, get_leaderboard_languages, get_profile_rank
+from core.leaderboard import (
+    get_cached_profile_record,
+    get_leaderboard,
+    get_leaderboard_languages,
+    get_profile_rank,
+)
 
 # Re-export key functions for backwards compatibility with tests and tooling
 __all__ = [
@@ -437,42 +450,199 @@ async def profile_rank_endpoint(request: Request, username: str) -> Dict[str, An
     return get_profile_rank(clean_username)
 
 
+_AVATAR_B64_CACHE: Dict[str, str] = {}
+
+
+async def _fetch_avatar_b64(avatar_url: Optional[str]) -> Optional[str]:
+    """Fetch GitHub avatar and convert to base64 data URI for Camo-safe SVG embedding."""
+    if not avatar_url:
+        return None
+
+    clean_url = avatar_url.strip()
+    if clean_url in _AVATAR_B64_CACHE:
+        return _AVATAR_B64_CACHE[clean_url]
+
+    sep = "&" if "?" in clean_url else "?"
+    req_url = f"{clean_url}{sep}s=64"
+
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(req_url, headers={"User-Agent": "Git-Spectre"})
+            if resp.status_code == 200 and resp.content:
+                content_type = resp.headers.get("content-type", "image/png").split(";")[0].strip()
+                b64 = base64.b64encode(resp.content).decode("utf-8")
+                data_uri = f"data:{content_type};base64,{b64}"
+                if len(_AVATAR_B64_CACHE) > 1000:
+                    _AVATAR_B64_CACHE.pop(next(iter(_AVATAR_B64_CACHE)))
+                _AVATAR_B64_CACHE[clean_url] = data_uri
+                return data_uri
+    except Exception as e:
+        logger.debug("Could not fetch avatar for badge (%s): %s", clean_url, e)
+
+    return None
+
+
 @app.get("/api/badge/{username}", include_in_schema=False)
+@app.get("/api/badge/card/{username}", include_in_schema=False)
 async def badge_svg(
+    request: Request,
     username: str = FPath(
         ...,
         pattern=r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$",
         description="GitHub username",
     ),
+    style: str = "pill",
+    metric: str = "score",
+    theme: str = "spectre",
+    border: bool = True,
 ) -> Response:
-    """Return a dynamic shields.io-style SVG badge: Dev Score + Grade."""
+    """
+    Return dynamic vector SVG badges and cards for GitHub Profile READMEs.
+    Fully compatible with GitHub's Camo image proxy and markdown image embeds.
+    """
+    # If accessed via /api/badge/card/{username}, default style to card
+    if "/api/badge/card/" in request.url.path:
+        style = "card"
+
+    clean_user = username.strip()
+    style_clean = style.lower().strip()
+    metric_clean = metric.lower().strip()
+    theme_clean = theme.lower().strip()
+
     token = _get_server_token()
+    data: Optional[Dict[str, Any]] = None
+
     try:
-        data = await _run_analysis(username.strip(), token)
-    except HTTPException:
-        svg = _make_badge_svg("Git-Spectre", "not found", "#6b7280")
+        data = await _run_analysis(clean_user, token)
+    except Exception:
+        # Fallback to local SQLite database if live API fails / is rate-limited
+        db_profile = get_cached_profile_record(clean_user)
+        if db_profile:
+            data = {
+                "profile": {
+                    "login": db_profile["login"],
+                    "name": db_profile.get("name"),
+                    "avatar_url": db_profile.get("avatar_url"),
+                    "public_repos": db_profile.get("public_repos", 0),
+                    "stars_earned": db_profile.get("stars_earned", 0),
+                },
+                "stats": {
+                    "total_stars": db_profile.get("stars_earned", 0),
+                    "own_repos": db_profile.get("public_repos", 0),
+                },
+                "score": {
+                    "total": db_profile.get("dev_score", 0),
+                    "tier": db_profile.get("score_tier", "B"),
+                    "grade": db_profile.get("score_tier", "B"),
+                },
+                "archetype": {
+                    "title": db_profile.get("archetype_title", "CODE CRAFTSMAN"),
+                    "label": db_profile.get("archetype_title", "CODE CRAFTSMAN"),
+                },
+                "languages": {db_profile["primary_language"]: 100} if db_profile.get("primary_language") else {},
+                "dev_level": {"level": db_profile.get("dev_level", 1)},
+                "streaks": {"longest": 0, "current": 0},
+            }
+
+    if not data:
+        svg = generate_not_found_badge(clean_user, style="card" if style_clean in ("card", "badge", "profile") else "pill", theme=theme_clean)
         return Response(
-            svg, media_type="image/svg+xml", headers={"Cache-Control": "no-cache"}
+            svg,
+            media_type="image/svg+xml; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=120"},
         )
 
-    sc = data["score"]
-    grade_colors = {
-        "S+": "#f59e0b",
-        "S": "#10b981",
-        "A": "#06b6d4",
-        "B": "#8b5cf6",
-        "C": "#f97316",
-        "D": "#ef4444",
-        "E": "#6b7280",
-    }
-    color = grade_colors.get(sc["grade"], "#22d3ee")
-    label = f"Score {sc['total']} · {sc['grade']}"
-    svg = _make_badge_svg("Git-Spectre", label, color)
+    p = data.get("profile", {})
+    sc = data.get("score", {})
+    arc = data.get("archetype", {})
+    langs = data.get("languages", {})
+    streaks = data.get("streaks", {})
+    stats_data = data.get("stats", {})
+    total_stars = stats_data.get("total_stars")
+    if total_stars is None:
+        total_stars = sum(
+            r.get("stars", 0) or r.get("stargazers_count", 0)
+            for r in data.get("top_repos", [])
+        ) or p.get("stars_earned", 0)
+
+    # Rank metadata
+    try:
+        rank_data = get_profile_rank(clean_user)
+    except Exception:
+        rank_data = None
+
+    if style_clean in ("card", "badge", "profile"):
+        # Fetch user's avatar for embedding in profile badge
+        avatar_b64 = None
+        av_url = p.get("avatar_url") or f"https://avatars.githubusercontent.com/{clean_user}"
+        try:
+            avatar_b64 = await _fetch_avatar_b64(av_url)
+        except Exception:
+            avatar_b64 = None
+
+        svg = generate_profile_badge(
+            profile=p,
+            score=sc,
+            archetype=arc,
+            languages=langs,
+            rank_info=rank_data,
+            streaks=streaks,
+            total_stars=total_stars,
+            theme=theme_clean,
+            border=border,
+            avatar_b64=avatar_b64,
+        )
+    else:
+        # Determine left / right labels based on selected metric
+        tier = str(sc.get("tier") or sc.get("grade") or "B").upper()
+        accent_col = GRADE_COLORS.get(tier, "#10b981")
+
+        if metric_clean == "rank":
+            rank_num = rank_data.get("all_time", {}).get("rank") if rank_data else None
+            rank_display = f"#{rank_num}" if rank_num else "Tracked"
+            left_text = "Git-Spectre"
+            right_text = f"Rank {rank_display}"
+            accent_col = "#06b6d4"
+        elif metric_clean == "archetype":
+            arc_label = str(arc.get("title") or arc.get("label") or "Craftsman")
+            left_text = "Archetype"
+            right_text = arc_label
+            accent_col = "#8b5cf6"
+        elif metric_clean == "level":
+            lvl = data.get("dev_level", {}).get("level", 1)
+            left_text = "Git-Spectre"
+            right_text = f"Level {lvl}"
+            accent_col = "#f59e0b"
+        elif metric_clean == "streak":
+            stk = streaks.get("longest") or streaks.get("current") or 0
+            left_text = "Streak"
+            right_text = f"{stk} Days"
+            accent_col = "#f97316"
+        else:
+            # Default score + tier
+            left_text = "Git-Spectre"
+            right_text = f"Score {sc.get('total', 0)} · {tier}"
+
+        pill_style = style_clean if style_clean in ("cyber", "for-the-badge", "flat") else "flat"
+        svg = generate_pill_badge(
+            left=left_text,
+            right=right_text,
+            color=accent_col,
+            style=pill_style,
+            theme=theme_clean,
+        )
+
+    is_preview = "_t" in request.query_params or "no-cache" in request.headers.get("cache-control", "")
+    cache_header = "no-cache, no-store, must-revalidate" if is_preview else "public, max-age=1800, s-maxage=1800, stale-while-revalidate=86400"
+
     return Response(
         svg,
-        media_type="image/svg+xml",
-        headers={"Cache-Control": "public, max-age=600"},
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "Cache-Control": cache_header,
+        },
     )
+
 
 
 if __name__ == "__main__":

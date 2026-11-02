@@ -17,7 +17,7 @@ export function renderExplorer(dossier) {
 
   function renderRepoList(title, repos, totalCount) {
     return `
-      <div class="bg-surface p-5 flex flex-col min-h-0">
+      <div class="bg-surface p-3.5 sm:p-5 flex flex-col min-h-0 min-w-0 overflow-hidden">
         <h3 class="flex items-baseline justify-between text-sm font-semibold text-ink">
           ${title}
           <span class="font-mono text-[11px] font-normal text-muted">${totalCount}</span>
@@ -27,8 +27,8 @@ export function renderExplorer(dossier) {
             <li>
               <a href="${safeUrl(r.html_url || r.url || `https://github.com/${summary.login}/${r.name}`)}"
                 target="_blank" rel="noreferrer"
-                class="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-xs transition-colors duration-150 hover:bg-raised">
-                <span class="truncate font-mono text-ink">${esc(r.name)}</span>
+                class="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs transition-colors duration-150 hover:bg-raised min-w-0">
+                <span class="truncate font-mono text-ink min-w-0 flex-1">${esc(r.name)}</span>
                 <span class="flex shrink-0 items-center gap-1 font-mono text-[11px] tabular-nums text-muted">
                   ${icon('star', 'w-3 h-3 text-yellow-400/80')} ${compact(r.stargazers_count ?? r.stars ?? 0)}
                 </span>
@@ -42,22 +42,22 @@ export function renderExplorer(dossier) {
 
   function renderPeopleGrid(title, people, totalCount) {
     return `
-      <div class="bg-surface p-5">
+      <div class="bg-surface p-3.5 sm:p-5 min-w-0 overflow-hidden">
         <h3 class="flex items-baseline justify-between text-sm font-semibold text-ink">
           ${title}
           <span class="font-mono text-[11px] font-normal text-muted">${totalCount}</span>
         </h3>
-        <ul class="mt-3 grid grid-cols-2 gap-x-2.5 gap-y-2">
+        <ul class="mt-3 grid grid-cols-1 xs:grid-cols-2 gap-x-2.5 gap-y-2">
           ${people.length ? people.slice(0, 8).map(p => `
             <li>
               <a href="${safeUrl(p.url || `https://github.com/${p.login}`)}"
                 target="_blank" rel="noreferrer"
-                class="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors duration-150 hover:bg-raised">
+                class="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors duration-150 hover:bg-raised min-w-0">
                 <img src="${avatarUrl(p.login, 44)}" alt="" class="h-5 w-5 rounded-full object-cover shrink-0" />
-                <span class="truncate font-mono text-xs text-ink">@${esc(p.login)}</span>
+                <span class="truncate font-mono text-xs text-ink min-w-0 flex-1">@${esc(p.login)}</span>
               </a>
             </li>
-          `).join('') : '<p class="col-span-2 text-xs text-muted py-4 text-center font-mono">None listed</p>'}
+          `).join('') : '<p class="col-span-1 xs:col-span-2 text-xs text-muted py-4 text-center font-mono">None listed</p>'}
         </ul>
       </div>
     `;

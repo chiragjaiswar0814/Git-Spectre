@@ -623,3 +623,19 @@ def get_leaderboard_languages() -> List[Dict[str, Any]]:
         logger.error("Failed to query leaderboard languages: %s", e)
 
     return languages
+
+
+def get_cached_profile_record(username: str) -> Optional[Dict[str, Any]]:
+    """Retrieve stored profile metadata from SQLite leaderboard as an offline fallback."""
+    clean_login = username.strip().lower()
+    try:
+        with _get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM leaderboard_profiles WHERE LOWER(login) = ? LIMIT 1;",
+                (clean_login,),
+            ).fetchone()
+            if row:
+                return dict(row)
+    except Exception as e:
+        logger.warning("Failed to retrieve cached profile record for '%s': %s", clean_login, e)
+    return None

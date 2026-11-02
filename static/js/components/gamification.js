@@ -46,7 +46,7 @@ export function renderGamification(dossier) {
   const offset = c * (1 - pct / 100);
 
   container.innerHTML = `
-    <section class="rounded-2xl border border-line bg-surface p-6 sm:p-7">
+    <section class="rounded-2xl border border-line bg-surface p-3.5 sm:p-7 min-w-0 overflow-hidden">
       <header class="flex flex-wrap items-baseline justify-between gap-3 mb-6">
         <div>
           <h3 class="text-base font-semibold tracking-tight text-ink">Level & Achievements</h3>
@@ -54,12 +54,12 @@ export function renderGamification(dossier) {
         </div>
       </header>
 
-      <div class="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div class="grid gap-6 sm:gap-8 lg:grid-cols-[280px_minmax(0,1fr)] min-w-0">
         <!-- XP & Level Rank Box -->
-        <div class="flex flex-col lg:border-r lg:border-line lg:pr-8">
-          <div class="flex items-center gap-5">
+        <div class="flex flex-col lg:border-r lg:border-line lg:pr-8 min-w-0">
+          <div class="flex items-center gap-4 sm:gap-5 min-w-0">
             <!-- XP Circle -->
-            <div class="relative h-[116px] w-[116px] shrink-0">
+            <div class="relative h-[100px] w-[100px] sm:h-[116px] sm:w-[116px] shrink-0">
               <svg viewBox="0 0 116 116" class="-rotate-90 w-full h-full">
                 <circle cx="58" cy="58" r="${r}" stroke-width="8" class="fill-none stroke-line" />
                 <circle cx="58" cy="58" r="${r}" stroke-width="8" stroke-linecap="round"
@@ -68,23 +68,23 @@ export function renderGamification(dossier) {
               </svg>
               <div class="absolute inset-0 grid place-items-center text-center">
                 <div>
-                  <div class="font-mono text-2xl font-bold tabular-nums text-ink">${pct}%</div>
-                  <div class="text-[10px] text-muted">to ${TITLES[rankIdx + 1] || 'max'}</div>
+                  <div class="font-mono text-xl sm:text-2xl font-bold tabular-nums text-ink">${pct}%</div>
+                  <div class="text-[9px] sm:text-[10px] text-muted">to ${TITLES[rankIdx + 1] || 'max'}</div>
                 </div>
               </div>
             </div>
 
-            <div>
+            <div class="min-w-0 flex-1">
               <p class="text-xs text-muted">Current rank</p>
-              <p class="mt-0.5 text-2xl font-bold tracking-tight" style="color:${rankColor}">
+              <p class="mt-0.5 text-xl sm:text-2xl font-bold tracking-tight truncate" style="color:${rankColor}">
                 ${esc(level.title || TITLES[rankIdx])}
               </p>
             </div>
           </div>
 
-          <p class="mt-4 text-xs leading-relaxed text-muted">${esc(level.description || '')}</p>
+          <p class="mt-3 sm:mt-4 text-xs leading-relaxed text-muted break-words">${esc(level.description || '')}</p>
 
-          <div class="mt-5">
+          <div class="mt-4 sm:mt-5">
             <div class="flex justify-between font-mono text-[11px] tabular-nums text-muted">
               <span>${full(xpCurrent)} XP</span>
               <span>${full(xpNext)} XP</span>
@@ -95,19 +95,19 @@ export function renderGamification(dossier) {
           </div>
 
           <!-- Rank ladder dots -->
-          <ol class="mt-6 flex items-center justify-between" aria-label="Rank ladder">
+          <ol class="mt-5 sm:mt-6 flex items-center justify-between" aria-label="Rank ladder">
             ${TITLES.map((t, i) => `
               <li class="flex flex-col items-center gap-1.5" title="${t}">
                 <span class="h-2 w-2 rounded-full ${i <= rankIdx ? '' : 'bg-line'}"
                   style="${i <= rankIdx ? `background:${TITLE_COLORS[i]}` : ''}"></span>
-                <span class="text-[9px] ${i === rankIdx ? 'font-bold text-ink' : 'text-muted'}">${t}</span>
+                <span class="text-[9px] ${i === rankIdx ? 'font-bold text-ink' : 'hidden xs:inline text-muted'}">${t}</span>
               </li>
             `).join('')}
           </ol>
         </div>
 
         <!-- 15 Achievement Badges Grid -->
-        <ul class="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+        <ul class="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-2.5 min-w-0">
           ${achievements.map(a => {
             const badgeSvg = icon(a.icon || 'star', 'w-5 h-5');
             const tier = (a.rarity || a.tier || 'common').toLowerCase();
@@ -118,18 +118,18 @@ export function renderGamification(dossier) {
 
             return `
               <li title="${esc(desc || name)}"
-                class="relative flex flex-col items-center rounded-xl p-3 text-center border border-line bg-raised transition-transform duration-200 hover:scale-105 ${
+                class="relative flex flex-col items-center rounded-xl p-2.5 sm:p-3 text-center border border-line bg-raised transition-transform duration-200 hover:scale-105 min-w-0 ${
                   isUnlocked ? 'ring-1 ring-white/10' : 'opacity-35 grayscale'
                 }">
-                <span class="grid h-10 w-10 place-items-center rounded-full text-lg"
+                <span class="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-full text-base sm:text-lg"
                   style="background:${color}18; color:${color}; ${isUnlocked ? `box-shadow:inset 0 0 0 1px ${color}55` : ''}">
                   ${badgeSvg}
                 </span>
-                <span class="mt-2 text-[12px] font-medium leading-tight text-ink line-clamp-1">${esc(name)}</span>
+                <span class="mt-2 text-[11px] sm:text-[12px] font-medium leading-tight text-ink line-clamp-1 w-full truncate">${esc(name)}</span>
                 <span class="mt-1 font-mono text-[9px] uppercase tracking-wider font-semibold" style="color:${color}">
                   ${esc(a.rarity || a.tier || 'Common')}
                 </span>
-                ${!isUnlocked ? `<span class="absolute right-2 top-2 text-muted/60">${icon('lock', 'w-3 h-3')}</span>` : ''}
+                ${!isUnlocked ? `<span class="absolute right-1.5 top-1.5 sm:right-2 sm:top-2 text-muted/60">${icon('lock', 'w-3 h-3')}</span>` : ''}
               </li>
             `;
           }).join('')}

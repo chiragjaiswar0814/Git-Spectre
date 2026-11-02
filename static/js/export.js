@@ -5,4 +5,4 @@
 
 export { exportPdf } from './export/pdf.js';
 export { exportShareCard } from './export/shareCard.js';
-export { copyBadgeSnippet } from './export/badge.js';
+export { copyBadgeSnippet, openBadgeModal } from './export/badge.js';

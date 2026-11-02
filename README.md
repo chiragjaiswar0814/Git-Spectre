@@ -6,7 +6,7 @@
 ![GitHub REST API](https://img.shields.io/badge/GitHub%20REST%20API-v3-181717?style=flat-square&logo=github&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://git-spectre.vercel.app/)
-![Version](https://img.shields.io/badge/version-3.0-22d3ee?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.1.2-22d3ee?style=flat-square)
 
 > 🚀 **[https://git-spectre.vercel.app/](https://git-spectre.vercel.app/)** — live, no setup required.
 
@@ -108,9 +108,11 @@ To generate a token: [GitHub → Settings → Developer Settings → Personal Ac
 |---|---|---|
 | **Backend** | FastAPI + Uvicorn | Async-native, auto-generates API docs at `/docs` |
 | **HTTP Client** | `httpx.AsyncClient` | Drop-in async replacement for `requests`; native `asyncio` support |
+| **Database** | SQLite + Turso (LibSQL Cloud) | Local Write-Ahead Logging (`WAL`) + serverless HTTP pipeline persistence |
 | **Frontend** | Vanilla ES Modules + TailwindCSS (CDN) | Modular architecture, strictly `< 500` lines/file, zero build step |
 | **Charts** | Chart.js 4.x | Radar, bar, stacked-bar charts — no heavy dependencies |
 | **Export** | Native Canvas 2D + jsPDF | High-res client-side PNG card + 2-page vector PDF dossier |
+| **Badges** | Pure SVG Generator | Camo-compatible vector profile cards and shields-style pills |
 | **GitHub Data** | GitHub REST API v3 | Public, no SDK needed |
 | **Hosting** | Vercel (`@vercel/python`) | Serverless FastAPI — zero infrastructure |
 
@@ -128,16 +130,20 @@ cd Git-Spectre
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run the backend
+# 3. (Optional) Run automated tests
+pytest
+
+# 4. Run the backend
 uvicorn main:app --reload
 ```
 
 The server starts on **`http://localhost:8000`**.
 
 - **UI** → `http://localhost:8000/`
+- **Leaderboard** → `http://localhost:8000/?view=leaderboard`
 - **API docs** → `http://localhost:8000/docs`
 
-Optionally, set a default token via environment variable:
+Optionally, configure environment variables in `.env` or your shell:
 
 ```bash
 # Windows (PowerShell)
@@ -145,6 +151,10 @@ $env:GITHUB_TOKEN = "ghp_your_token_here"
 
 # macOS / Linux
 GITHUB_TOKEN=ghp_your_token_here uvicorn main:app --reload
+
+# Optional: Cloud Leaderboard (Turso / LibSQL)
+TURSO_DATABASE_URL=https://your-database.turso.io
+TURSO_AUTH_TOKEN=your_turso_token
 ```
 
 ---
@@ -154,11 +164,12 @@ GITHUB_TOKEN=ghp_your_token_here uvicorn main:app --reload
 | Shortcut | Action |
 |---|---|
 | `Ctrl + K` | Focus search bar |
-| `Ctrl + E` | Export PDF |
-| `Ctrl + D` | Open Compare modal |
-| `Ctrl + B` | Open Batch Screener |
-| `Ctrl + T` | Toggle dark / light mode |
-| `Esc` | Close any open modal |
+| `Ctrl + L` | View Global Developer Rankings (Leaderboard) |
+| `Ctrl + E` | Export PDF Dossier |
+| `Ctrl + D` | Open Profile Compare modal |
+| `Ctrl + B` | Open Batch Screener modal |
+| `Ctrl + T` | Toggle dark / light theme |
+| `Esc` | Close any open modal / return to view |
 
 ---
 
@@ -265,6 +276,115 @@ Returns a self-contained dark HTML card (~2KB). Embed in any HTML page:
 <iframe src="https://git-spectre.vercel.app/embed/torvalds"
         width="340" height="220" frameborder="0"></iframe>
 ```
+
+---
+
+### `GET /api/leaderboard`
+
+Query the Global Developer Leaderboard with server-side caching and multi-timeframe aggregation.
+
+```http
+GET /api/leaderboard?period=all&limit=50&language=Python&q=octocat
+```
+
+**Query Parameters:**
+* `period`: `daily` (Today), `monthly` (This Month), `yearly` (This Year), `all` (All-Time, default)
+* `limit`: Number of results to return (default 50, max 100)
+* `language`: Filter by primary programming language (e.g. `TypeScript`, `Python`, `Go`)
+* `q`: Filter by username or display name substring
+
+**Response:**
+```json
+{
+  "period": "all",
+  "total_ranked": 1420,
+  "profiles": [
+    {
+      "rank": 1,
+      "login": "octocat",
+      "name": "The Octocat",
+      "avatar_url": "https://avatars.githubusercontent.com/u/583231",
+      "primary_language": "CSS",
+      "dev_score": 617,
+      "score_tier": "A",
+      "stars_earned": 21180,
+      "checks_count": 89
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/leaderboard/languages`
+
+Returns distinct primary programming languages across ranked profiles with representation counts:
+
+```json
+[
+  { "language": "TypeScript", "count": 412 },
+  { "language": "Python", "count": 356 }
+]
+```
+
+---
+
+### `GET /api/leaderboard/rank/{username}`
+
+Fetch real-time rank and popularity metrics for a specific developer:
+
+```json
+{
+  "login": "octocat",
+  "daily_rank": 3,
+  "monthly_rank": 5,
+  "yearly_rank": 8,
+  "all_time_rank": 12,
+  "total_checks": 89
+}
+```
+
+---
+
+### `GET /api/badge/{username}` & `GET /api/badge/card/{username}`
+
+Generates dynamic, **GitHub Camo-compatible vector SVGs** for embedding directly into GitHub Profile READMEs. Pure SVG geometry with embedded avatar base64 data URIs and zero external font dependencies.
+
+#### 1. Modern Developer Profile Badge (README Card)
+```markdown
+[![Git-Spectre](https://git-spectre.vercel.app/api/badge/card/octocat?theme=spectre)](https://git-spectre.vercel.app/?u=octocat)
+```
+
+**Card Features:**
+* **Real GitHub Profile Avatar**: Vector circular avatar fetched and embedded via base64 data URI (with vector initials fallback).
+* **Earned Stars Counter**: Formatted repository stars (`★ 21.2k`).
+* **Professional Role**: Clean developer title derived from archetype (e.g. `Full-Stack Developer`, `Polyglot Engineer`, `Systems Specialist`).
+* **Dev Score XP**: Real calculated developer XP score (e.g. `617 XP`).
+* **Primary Language**: Dominant language tag with official GitHub language color accent.
+* **Curated Themes**: `theme=spectre` (default dark neon), `dark` (GitHub Dark), `tokyo` (Tokyo Night), `matrix` (Hacker Matrix), `light` (Clean Light).
+
+HTML Embed:
+```html
+<a href="https://git-spectre.vercel.app/?u=octocat">
+  <img src="https://git-spectre.vercel.app/api/badge/card/octocat?theme=spectre" alt="Git-Spectre Profile" />
+</a>
+```
+
+#### 2. Compact Pill Badges (Shields style)
+```markdown
+[![Git-Spectre](https://git-spectre.vercel.app/api/badge/octocat)](https://git-spectre.vercel.app/?u=octocat)
+```
+
+**Customization Query Parameters:**
+* `style`: `pill` (default rounded shields), `cyber` (tactical glow), `for-the-badge` (chunky uppercase)
+* `metric`: `score` (Dev Score & Tier), `rank` (Global Leaderboard Rank), `archetype`, `streak`, `level`
+* `theme`: `spectre`, `dark`, `tokyo`, `matrix`, `light`
+
+Example:
+```markdown
+[![Git-Spectre Rank](https://git-spectre.vercel.app/api/badge/octocat?metric=rank&theme=spectre)](https://git-spectre.vercel.app/?u=octocat)
+```
+
 
 ---
 

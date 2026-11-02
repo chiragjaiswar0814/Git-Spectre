@@ -249,7 +249,7 @@ async def _run_analysis(
             archetype=result.get("archetype"),
             dev_level=result.get("dev_level"),
             languages=result.get("languages"),
-            stars_earned=result.get("stars", {}).get("total_earned", 0),
+            stars_earned=result.get("stats", {}).get("total_stars", 0),
         )
         result["leaderboard"] = get_profile_rank(username)
     except Exception as e:

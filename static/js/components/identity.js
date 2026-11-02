@@ -165,17 +165,17 @@ export function renderIdentity(dossier) {
     <section class="overflow-hidden rounded-2xl border border-line bg-surface">
       <div class="grid lg:grid-cols-[minmax(0,1fr)_340px]">
         <!-- Left details column -->
-        <div class="p-6 sm:p-8">
-          <div class="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <div class="relative h-24 w-24 shrink-0">
+        <div class="p-4 sm:p-8 min-w-0">
+          <div class="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-start min-w-0">
+            <div class="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 mx-auto sm:mx-0">
               <span class="absolute inset-0 rounded-full border-2 border-accent animate-ring-pulse" aria-hidden="true"></span>
               <span class="absolute -inset-1 rounded-full border border-accent/40" aria-hidden="true"></span>
               <img src="${avatarUrl(profile.login, 200)}" alt="${esc(profile.name || profile.login)}"
-                class="relative h-24 w-24 rounded-full bg-raised object-cover" />
+                class="relative h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-raised object-cover" />
             </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-3">
-                <h1 class="text-3xl font-semibold tracking-tight text-ink">
+            <div class="min-w-0 flex-1 text-center sm:text-left">
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
+                <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-ink truncate max-w-full">
                   <a href="${safeUrl(profile.html_url || `https://github.com/${profile.login}`)}"
                     target="_blank" rel="noreferrer" class="transition-colors duration-150 hover:text-accent">
                     ${esc(profile.name || profile.login)}
@@ -191,12 +191,12 @@ export function renderIdentity(dossier) {
 						: ""
 				}
               </div>
-              <p class="mt-1 font-mono text-sm text-muted">@${esc(profile.login)}</p>
-              ${profile.bio ? `<p class="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink/80">${esc(profile.bio)}</p>` : ""}
+              <p class="mt-1 font-mono text-xs sm:text-sm text-muted truncate">@${esc(profile.login)}</p>
+              ${profile.bio ? `<p class="mt-3 max-w-2xl text-[13px] sm:text-[14px] leading-relaxed text-ink/80 break-words">${esc(profile.bio)}</p>` : ""}
             </div>
           </div>
 
-          <div class="mt-6 flex flex-wrap items-center gap-3">
+          <div class="mt-5 sm:mt-6 flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
             <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-bold tracking-[0.14em] text-ink"
               style="border-color:${archColor}; box-shadow:0 0 0 3px ${archColor}1f, 0 0 20px -6px ${archColor}">
               <span class="h-2 w-2 rounded-full" style="background:${archColor}" aria-hidden="true"></span>
@@ -205,20 +205,20 @@ export function renderIdentity(dossier) {
             ${personaText}
             ${leaderboardBadge}
           </div>
-          ${archetype.description ? `<p class="mt-2.5 max-w-2xl text-xs text-muted leading-relaxed">${esc(archetype.description)}</p>` : ""}
+          ${archetype.description ? `<p class="mt-2.5 max-w-2xl text-xs text-muted leading-relaxed break-words">${esc(archetype.description)}</p>` : ""}
 
           <!-- Metadata list -->
-          <ul class="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
-            ${profile.location ? `<li class="flex items-center gap-1.5">${icon("map-pin", "w-3.5 h-3.5 text-muted shrink-0")} ${esc(profile.location)}</li>` : ""}
-            ${profile.company ? `<li class="flex items-center gap-1.5">${icon("building", "w-3.5 h-3.5 text-muted shrink-0")} ${esc(profile.company)}</li>` : ""}
-            ${profile.created_at ? `<li class="flex items-center gap-1.5">${icon("calendar", "w-3.5 h-3.5 text-muted shrink-0")} Joined ${esc(profile.created_at)}</li>` : ""}
+          <ul class="mt-5 flex flex-wrap justify-center sm:justify-start gap-x-4 sm:gap-x-5 gap-y-2 text-xs text-muted">
+            ${profile.location ? `<li class="flex items-center gap-1.5 truncate max-w-[200px]">${icon("map-pin", "w-3.5 h-3.5 text-muted shrink-0")} <span class="truncate">${esc(profile.location)}</span></li>` : ""}
+            ${profile.company ? `<li class="flex items-center gap-1.5 truncate max-w-[200px]">${icon("building", "w-3.5 h-3.5 text-muted shrink-0")} <span class="truncate">${esc(profile.company)}</span></li>` : ""}
+            ${profile.created_at ? `<li class="flex items-center gap-1.5 shrink-0">${icon("calendar", "w-3.5 h-3.5 text-muted shrink-0")} Joined ${esc(profile.created_at)}</li>` : ""}
             ${
 				profile.blog
 					? `
-              <li>
+              <li class="truncate max-w-[200px]">
                 <a href="${safeUrl(profile.blog.startsWith("http") ? profile.blog : "https://" + profile.blog)}"
-                  target="_blank" rel="noreferrer" class="flex items-center gap-1.5 text-accent hover:underline">
-                  ${icon("link", "w-3.5 h-3.5 text-accent shrink-0")} ${esc(profile.blog.replace(/^https?:\/\//, "").slice(0, 30))}
+                  target="_blank" rel="noreferrer" class="flex items-center gap-1.5 text-accent hover:underline truncate">
+                  ${icon("link", "w-3.5 h-3.5 text-accent shrink-0")} <span class="truncate">${esc(profile.blog.replace(/^https?:\/\//, ""))}</span>
                 </a>
               </li>
             `
@@ -231,7 +231,7 @@ export function renderIdentity(dossier) {
         </div>
 
         <!-- Right Score column -->
-        <aside class="border-t border-line bg-raised p-6 sm:p-8 lg:border-l lg:border-t-0 flex flex-col justify-between">
+        <aside class="border-t border-line bg-raised p-4 sm:p-8 lg:border-l lg:border-t-0 flex flex-col justify-between min-w-0">
           <div>
             <div class="flex items-baseline justify-between">
               <h2 class="text-sm font-semibold text-ink">
@@ -279,25 +279,25 @@ export function renderIdentity(dossier) {
       </div>
 
       <!-- Metric Strip -->
-      <dl class="grid grid-cols-2 gap-px border-t border-line bg-line md:grid-cols-4">
-        <div class="bg-surface px-6 py-4">
-          <dt class="text-xs text-muted">Own repositories</dt>
-          <dd class="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink" id="statOwnRepos">0</dd>
+      <dl class="grid grid-cols-2 gap-px border-t border-line bg-line md:grid-cols-4 min-w-0">
+        <div class="bg-surface px-3.5 sm:px-6 py-3 sm:py-4 min-w-0">
+          <dt class="text-[11px] sm:text-xs text-muted truncate">Own repositories</dt>
+          <dd class="mt-1 font-mono text-xl sm:text-2xl font-semibold tabular-nums text-ink" id="statOwnRepos">0</dd>
         </div>
-        <div class="bg-surface px-6 py-4">
-          <dt class="text-xs text-muted">Total stars</dt>
-          <dd class="mt-1 flex flex-wrap items-baseline gap-2">
-            <span class="font-mono text-2xl font-semibold tabular-nums text-ink" id="statTotalStars">0</span>
-            ${star_velocity > 0 ? `<span class="inline-flex items-center gap-1 rounded-md bg-lime/15 px-1.5 py-0.5 font-mono text-[11px] font-medium text-limeink">${icon("zap", "w-3 h-3 text-limeink")} ${star_velocity}/yr</span>` : ""}
+        <div class="bg-surface px-3.5 sm:px-6 py-3 sm:py-4 min-w-0">
+          <dt class="text-[11px] sm:text-xs text-muted truncate">Total stars</dt>
+          <dd class="mt-1 flex flex-wrap items-baseline gap-1.5 sm:gap-2">
+            <span class="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-ink" id="statTotalStars">0</span>
+            ${star_velocity > 0 ? `<span class="inline-flex items-center gap-1 rounded-md bg-lime/15 px-1.5 py-0.5 font-mono text-[10px] sm:text-[11px] font-medium text-limeink">${icon("zap", "w-3 h-3 text-limeink")} ${star_velocity}/yr</span>` : ""}
           </dd>
         </div>
-        <div class="bg-surface px-6 py-4">
-          <dt class="text-xs text-muted">Followers</dt>
-          <dd class="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink" id="statFollowers">0</dd>
+        <div class="bg-surface px-3.5 sm:px-6 py-3 sm:py-4 min-w-0">
+          <dt class="text-[11px] sm:text-xs text-muted truncate">Followers</dt>
+          <dd class="mt-1 font-mono text-xl sm:text-2xl font-semibold tabular-nums text-ink" id="statFollowers">0</dd>
         </div>
-        <div class="bg-surface px-6 py-4">
-          <dt class="text-xs text-muted">Following</dt>
-          <dd class="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink" id="statFollowing">0</dd>
+        <div class="bg-surface px-3.5 sm:px-6 py-3 sm:py-4 min-w-0">
+          <dt class="text-[11px] sm:text-xs text-muted truncate">Following</dt>
+          <dd class="mt-1 font-mono text-xl sm:text-2xl font-semibold tabular-nums text-ink" id="statFollowing">0</dd>
         </div>
       </dl>
     </section>

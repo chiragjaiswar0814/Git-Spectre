@@ -35,7 +35,8 @@ import {
 	openWrappedModal,
 } from "./components/modals.js";
 import { renderLeaderboardView } from "./components/leaderboard.js";
-import { exportPdf, exportShareCard, copyBadgeSnippet } from "./export.js";
+import { exportPdf, exportShareCard, copyBadgeSnippet, openBadgeModal } from "./export.js";
+
 import { initBackground } from "./components/background.js";
 
 // View Transition Helper
@@ -227,7 +228,7 @@ window.addEventListener("DOMContentLoaded", () => {
 		},
 		onCopyBadge: () => {
 			if (appState.activeDossier?.profile?.login) {
-				copyBadgeSnippet(appState.activeDossier.profile.login);
+				openBadgeModal(appState.activeDossier);
 			} else {
 				showToast("Scan a profile first", "alert-triangle");
 			}

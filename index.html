@@ -824,7 +824,7 @@
 			<!-- DOSSIER VIEW -->
 			<main
 				id="dossierSection"
-				class="relative z-10 hidden mx-auto max-w-[1320px] space-y-6 px-4 pb-36 pt-8 sm:px-6"
+				class="relative z-10 hidden mx-auto max-w-[1320px] space-y-5 sm:space-y-6 px-2.5 xs:px-4 sm:px-6 pb-36 pt-6 sm:pt-8 w-full max-w-full overflow-hidden"
 			>
 				<!-- 1. Identity Card -->
 				<div id="identityCardContainer"></div>
@@ -926,17 +926,18 @@
        ========================================================= -->
 		<aside
 			id="actionDock"
-			aria-label="Dossier actions"
-			class="hidden fixed bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-2xl sm:bottom-6 sm:right-6"
+			aria-label="Profile actions"
+			class="hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] inset-x-2 mx-auto sm:inset-x-auto sm:right-6 sm:bottom-6 sm:mx-0 z-30 flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 rounded-2xl border border-line bg-surface/95 backdrop-blur-md p-1 sm:p-1.5 shadow-2xl transition-all duration-300 w-[calc(100vw-1rem)] sm:w-auto max-w-md sm:max-w-none touch-manipulation"
 		>
 			<button
 				type="button"
 				id="dockBtnPdf"
-				class="inline-flex h-9 items-center gap-2 rounded-xl px-3 text-xs font-medium text-ink hover:bg-raised transition-colors"
+				class="flex-1 sm:flex-initial inline-flex h-9 items-center justify-center gap-1 sm:gap-2 rounded-xl px-1.5 sm:px-3 text-xs font-medium text-ink hover:bg-raised active:scale-95 transition-all shrink-0"
+				title="Export PDF Dossier (Ctrl+E)"
 			>
 				<svg
 					viewBox="0 0 24 24"
-					class="h-4 w-4 text-muted shrink-0"
+					class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted shrink-0"
 					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
@@ -949,6 +950,7 @@
 					<path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8" />
 				</svg>
 				<span class="hidden sm:inline">Export PDF</span>
+				<span class="inline sm:hidden font-mono text-[11px]">PDF</span>
 				<kbd
 					class="hidden md:inline-flex rounded border border-line bg-surface px-1 py-0.5 text-[9px] text-muted"
 					>^E</kbd
@@ -957,11 +959,12 @@
 			<button
 				type="button"
 				id="dockBtnCard"
-				class="inline-flex h-9 items-center gap-2 rounded-xl px-3 text-xs font-medium text-ink hover:bg-raised transition-colors"
+				class="flex-1 sm:flex-initial inline-flex h-9 items-center justify-center gap-1 sm:gap-2 rounded-xl px-1.5 sm:px-3 text-xs font-medium text-ink hover:bg-raised active:scale-95 transition-all shrink-0"
+				title="Export PNG Share Card"
 			>
 				<svg
 					viewBox="0 0 24 24"
-					class="h-4 w-4 text-muted shrink-0"
+					class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted shrink-0"
 					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
@@ -972,17 +975,38 @@
 					<circle cx="9" cy="9" r="2" />
 					<path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
 				</svg>
-				<span class="hidden sm:inline">Share Card</span>
+				<span class="hidden sm:inline">Export PNG</span>
+				<span class="inline sm:hidden font-mono text-[11px]">PNG</span>
 			</button>
-			<!-- Future: Badge button -->
 			<button
 				type="button"
-				id="dockBtnWrapped"
-				class="inline-flex h-9 items-center gap-2 rounded-xl bg-lime px-3.5 text-xs font-bold text-onlime shadow-sm hover:brightness-105 active:scale-95 transition-all"
+				id="dockBtnBadge"
+				class="flex-1 sm:flex-initial inline-flex h-9 items-center justify-center gap-1 sm:gap-2 rounded-xl px-1.5 sm:px-3 text-xs font-medium text-ink hover:bg-raised active:scale-95 transition-all shrink-0"
+				title="Get GitHub Profile Badge"
 			>
 				<svg
 					viewBox="0 0 24 24"
-					class="h-4 w-4 text-onlime shrink-0"
+					class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted shrink-0"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+				</svg>
+				<span class="hidden sm:inline">Profile Badge</span>
+				<span class="inline sm:hidden font-mono text-[11px]">Badge</span>
+			</button>
+			<button
+				type="button"
+				id="dockBtnWrapped"
+				class="flex-1 sm:flex-initial inline-flex h-9 items-center justify-center gap-1 sm:gap-2 rounded-xl bg-lime px-2 sm:px-3.5 text-xs font-bold text-onlime shadow-sm hover:brightness-105 active:scale-95 transition-all shrink-0"
+				title="View Developer Year in Review (Wrapped)"
+			>
+				<svg
+					viewBox="0 0 24 24"
+					class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-onlime shrink-0"
 					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
@@ -993,7 +1017,8 @@
 						d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
 					/>
 				</svg>
-				<span>Wrapped</span>
+				<span class="hidden xs:inline">Wrapped</span>
+				<span class="inline xs:hidden font-mono text-[11px]">Wrap</span>
 			</button>
 		</aside>
 		<!-- Application Entry Point -->
